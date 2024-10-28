@@ -1,0 +1,12 @@
+{
+	"manifest_version": 3,
+	"name": "Mindapp",
+	"version": "1.0.1",
+	"icons": { "1024": "src/mindapp-logo.png" },
+	"content_scripts": [
+		{
+			"js": ["src/contentScript.ts"],
+			"matches": ["<all_urls>"]
+		}
+	]
+}

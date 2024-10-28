@@ -1,0 +1,34 @@
+{
+	"name": "mindapp",
+	"engines": {
+		"node": ">=20.12.2"
+	},
+	"scripts": {
+		"client": "cd client && npm run dev",
+		"external": "cd client && npm run external",
+		"local": "cd server && npm run local",
+		"global-dev": "cd server && npm run global-dev",
+		"dk-studio": "cd server && npx drizzle-kit studio",
+		"dev-extension": "cd extension && npm run dev",
+		"build-extension": "cd extension && npm run build",
+		"all": "concurrently \"npm run local\" \"npm run global-dev\" \"npm run client\" \"npm run dev-extension\" \"npm run dk-studio\"",
+		"normie": "concurrently \"npm run global-dev\" \"npm run external\" \"npm run dk-studio\"",
+		"spaces": "concurrently \"npm run local\" \"npm run global-dev\" \"npm run client\" \"npm run dk-studio\"",
+		"local-space": "concurrently \"npm run local\" \"npm run client\" \"npm run dk-studio\"",
+		"start": "concurrently \"npm run local\" \"npm run client\"",
+		"deploy-server": "cd server && npm run deploy",
+		"deploy": "git push && cd server && npm run deploy",
+		"format": "prettier . --write"
+	},
+	"prettier": {
+		"printWidth": 100,
+		"semi": true,
+		"singleQuote": true,
+		"useTabs": true,
+		"trailingComma": "all"
+	},
+	"devDependencies": {
+		"concurrently": "8.2.2",
+		"prettier": "3.2.4"
+	}
+}

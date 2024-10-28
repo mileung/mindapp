@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+	.xy {
+		@apply flex flex-col justify-center items-center;
+	}
+
+	.fx {
+		@apply flex items-center;
+	}
+
+	.fy {
+		@apply flex flex-col items-center;
+	}
+
+	.b {
+		border: 1px solid red;
+	}
+
+	.o {
+		outline: 1px solid red;
+	}
+
+	.p {
+		@apply p-2 md:p-3.5 lg:p-5;
+	}
+
+	.px {
+		@apply px-2 md:px-3.5 lg:px-5;
+	}
+
+	.m {
+		@apply m-2 md:m-3.5 lg:m-5;
+	}
+
+	.mt {
+		@apply mt-2 md:mt-3.5 lg:mt-5;
+	}
+
+	.mx {
+		@apply mx-2 md:mx-3.5 lg:mx-5;
+	}
+
+	.gap {
+		@apply gap-2 md:gap-3.5 lg:gap-5;
+	}
+
+	.space-x {
+		@apply space-x-2 md:space-x-3.5 lg:space-x-5;
+	}
+
+	.space-y {
+		@apply space-y-2 md:space-y-3.5 lg:space-y-5;
+	}
+}
+
+.fade-in {
+	opacity: 0;
+	animation: fadeIn 500ms ease-out 1;
+	animation-fill-mode: forwards;
+}
+
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}

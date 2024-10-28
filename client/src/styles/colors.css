@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+	:root {
+		--bg1: #f2f2f2;
+		--bg2: #fdfdfd;
+		--fg1: #000000;
+		--fg2: #787878;
+		--mg1: #e6e6e6;
+		--mg2: #e2e2e2;
+	}
+	.dark {
+		--bg1: #000000;
+		--bg2: #161616;
+		--fg1: #ffffff;
+		--fg2: #bababa;
+		--mg1: #333333;
+		--mg2: #555555;
+	}
+}
