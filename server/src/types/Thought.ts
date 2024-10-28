@@ -30,7 +30,7 @@ const schema = {
 	additionalProperties: false,
 };
 
-const thoughtIdsRegex = /\b\d{9,}_(|[A-HJ-NP-Za-km-z1-9]{9,})_(|[\w:\.-]{3,})\b/g;
+const thoughtIdsRegex = /(^|\s)\d{9,}_(|[A-HJ-NP-Za-km-z1-9]{9,})_(|[\w:\.-]{3,})($|\s)/g;
 
 export class Thought {
 	public createDate: number;

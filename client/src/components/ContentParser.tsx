@@ -149,7 +149,7 @@ const IframePreview = ({ uri }: { uri: string }) => {
 	);
 };
 
-const thoughtIdsRegex = /\b\d{9,}_(|[A-HJ-NP-Za-km-z1-9]{9,})_(|[\w:\.-]{3,})\b/g;
+const thoughtIdsRegex = /(^|\s)\d{9,}_(|[A-HJ-NP-Za-km-z1-9]{9,})_(|[\w:\.-]{3,})($|\s)/g;
 function separateMentions(text: string) {
 	const matches = text.matchAll(thoughtIdsRegex);
 	const result: string[] = [];
