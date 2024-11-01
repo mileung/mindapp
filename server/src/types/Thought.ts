@@ -144,7 +144,7 @@ export class Thought {
 	}
 
 	get mentionedIds() {
-		return [...` ${this.content} `.matchAll(thoughtIdsRegex)].map((match) => match[0]);
+		return [...` ${this.content} `.matchAll(thoughtIdsRegex)].map((match) => match[0].trim());
 	}
 
 	get id() {
@@ -173,7 +173,7 @@ export class Thought {
 					// .limit(8)
 					// .offset(0)
 					// TODO: make asc an option
-					.orderBy((!'oldToNew' ? asc : desc)(thoughtsTable.createDate))
+					.orderBy((false ? asc : desc)(thoughtsTable.createDate))
 			).map(async (row) => {
 				const child = new Thought(row);
 				const expansion = await child.expand(voterId);
