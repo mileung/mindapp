@@ -7,15 +7,15 @@ import { Thought } from '../types/Thought';
 import env from '../utils/env';
 import { Author } from '../types/Author';
 
-type UrlQuery = {
-	mode: 'new' | 'old' | 'table';
+type Query = {
+	mode: 'new' | 'old';
 	thoughtId?: string;
 	authorIds?: string[];
 	tags?: string[];
 	other?: string[];
 };
 
-type ResultsQuery = UrlQuery & {
+type ResultsQuery = Query & {
 	ignoreRootIds: string[];
 	thoughtsBeyond: number;
 };
@@ -35,7 +35,6 @@ const getRoots: RequestHandler = async (req, res) => {
 	}
 	if (fromExistingMember?.frozen) throw new Error('Frozen persona');
 
-	const freeForm = mode !== 'table';
 	const oldToNew = mode === 'old';
 	const excludeIds = new Set(ignoreRootIds);
 	const roots: Thought['clientProps'][] = [];
@@ -44,9 +43,9 @@ const getRoots: RequestHandler = async (req, res) => {
 	const mentionedThoughts: Record<string, Thought> = {};
 	const authors: Record<string, Author['clientProps']> = {};
 	let latestCreateDate = oldToNew ? 0 : Number.MAX_SAFE_INTEGER;
-	const rootsPerLoad = freeForm ? 8 : 40;
+	const rootsPerLoad = 8;
 
-	if (thoughtId) {
+	if (thoughtId && !ignoreRootIds.length) {
 		const thought = await Thought.query(thoughtId);
 		if (!thought) return res.send({ mentionedThoughts: {}, roots: [] });
 
@@ -84,20 +83,15 @@ const getRoots: RequestHandler = async (req, res) => {
 			.offset(offset++);
 
 		if (!currentRow) break;
-		if (freeForm) {
-			const rootThought = await new Thought(currentRow).getRootThought();
-			if (
-				!excludeIds.has(rootThought.id) &&
-				!roots.find((root) => new Thought(root).id === rootThought.id)
-			) {
-				const { clientProps, allMentionedIds, allAuthorIds } = await rootThought.expand(from);
-				allMentionedIds.forEach((id) => mentionedThoughtIds.add(id));
-				allAuthorIds.forEach((id) => allAuthorIdsSet.add(id));
-				roots.push(clientProps);
-			}
-		} else {
-			const thought = new Thought(currentRow);
-			if (!excludeIds.has(thought.id)) roots.push(thought.clientProps);
+		const rootThought = await new Thought(currentRow).getRootThought();
+		if (
+			!excludeIds.has(rootThought.id) &&
+			!roots.find((root) => new Thought(root).id === rootThought.id)
+		) {
+			const { clientProps, allMentionedIds, allAuthorIds } = await rootThought.expand(from);
+			allMentionedIds.forEach((id) => mentionedThoughtIds.add(id));
+			allAuthorIds.forEach((id) => allAuthorIdsSet.add(id));
+			roots.push(clientProps);
 		}
 		latestCreateDate = (oldToNew ? Math.max : Math.min)(latestCreateDate, currentRow.createDate);
 		if (roots.length === rootsPerLoad) {
@@ -123,6 +117,7 @@ const getRoots: RequestHandler = async (req, res) => {
 		}),
 	);
 	res.send({ latestCreateDate, authors, mentionedThoughts, roots });
+	// console.log('roots:', roots);
 	console.timeEnd('query time');
 };
 

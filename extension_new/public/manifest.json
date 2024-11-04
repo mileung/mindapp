@@ -1,0 +1,13 @@
+{
+	"manifest_version": 3,
+	"name": "Highlight Alert Extension",
+	"version": "1.0",
+	"description": "Alerts highlighted text when µ is typed",
+	"permissions": [],
+	"content_scripts": [
+		{
+			"matches": ["<all_urls>"],
+			"js": ["content.js"]
+		}
+	]
+}

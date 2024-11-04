@@ -154,7 +154,7 @@ const TagEditor = ({
 							className="xy h-8 w-8 group"
 							ref={tagLnk}
 							onBlur={onEditingBlur}
-							to={`/tags/${recTag.label}`}
+							to={`/tags/${encodeURIComponent(recTag.label)}`}
 							onClick={(e) => onLinkClick(recTag.label, e)}
 						>
 							<LinkIcon className="h-6 w-6 mt-1 rotate-90 transition text-fg2 group-hover:text-fg1" />

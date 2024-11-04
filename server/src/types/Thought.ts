@@ -241,20 +241,22 @@ export class Thought {
 	}
 
 	async hasUserInteraction() {
-		// TODO: check for votes
-		// const [vote] = await drizzleClient
-		const [childOrMention] = await drizzleClient
-			.select()
-			.from(thoughtsTable)
-			.where(
-				or(
-					//
-					eq(thoughtsTable.parentId, this.id),
-					like(thoughtsTable.content, `%${this.id}%`),
-				),
-			)
-			.limit(1);
-		return !!childOrMention;
+		// TODO: this can be optimized with a join right?
+		const [[vote], [childOrMention]] = await Promise.all([
+			drizzleClient.select().from(votesTable).where(Vote.makeVoteFilter(this.id)).limit(1),
+			drizzleClient
+				.select()
+				.from(thoughtsTable)
+				.where(
+					or(
+						eq(thoughtsTable.parentId, this.id), //
+						like(thoughtsTable.content, `%${this.id}%`),
+					),
+				)
+				.limit(1),
+		]);
+
+		return !!childOrMention || !!vote;
 	}
 
 	async write() {

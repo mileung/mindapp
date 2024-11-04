@@ -5,7 +5,6 @@ import { useLastUsedTags, useTagTree } from '../utils/state';
 import { hostedLocally, makeUrl, ping, post } from '../utils/api';
 import {
 	TagTree,
-	getAllSubTags,
 	getNodes,
 	getNodesArr,
 	getParentsMap,

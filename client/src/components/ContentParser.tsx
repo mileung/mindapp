@@ -24,6 +24,7 @@ export default function ContentParser({
 
 		if (Array.isArray(content)) {
 			return content.map((str, i) => {
+				str = str.trim();
 				if (i % 2) {
 					return miniMentions ? (
 						<MiniMentionedThought key={i} thoughtId={str} />

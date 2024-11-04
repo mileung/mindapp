@@ -42,10 +42,16 @@ import sendTokenAmount from './routes/send-token-amount';
 import receiveBlocks from './routes/receive-blocks';
 import getVotes from './routes/get-votes';
 import saveRoots from './routes/save-roots';
+import bodyParser from 'body-parser';
 
 const app = express();
 const port = env.GLOBAL_HOST ? 8080 : 2000;
 const host = env.GLOBAL_HOST || `localhost:${port}`;
+
+if (!env.GLOBAL_HOST) {
+	// to prevent "request entity too large" error when calling save-roots
+	app.use(bodyParser.json({ limit: '50mb', type: 'application/json' }));
+}
 
 app.use(cors());
 app.use(express.json());

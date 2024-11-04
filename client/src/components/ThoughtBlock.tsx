@@ -75,7 +75,6 @@ export default function ThoughtBlock({
 	const voteTimer = useRef<NodeJS.Timeout>();
 	const [upvoted, upvotedSet] = useState<undefined | boolean>(thought.votes?.own);
 	const currentVote = useRef<undefined | boolean>(upvoted);
-	const [votes, votesSet] = useState<undefined | { up?: true; voterId: string }[]>();
 	const voteCount = useMemo(() => {
 		const votes = { up: thought.votes?.up || 0, down: thought.votes?.down || 0 };
 		if (upvoted !== undefined) upvoted ? votes.up++ : votes.down++;

@@ -82,7 +82,7 @@ export function getTags(input: string) {
 }
 
 export function getAllSubTags(tagTree: TagTree, tag: string): string[] {
-	const result = new Set(tag);
+	const result = new Set([tag]);
 	const queue = [tag];
 	while (queue.length > 0) {
 		const currentTag = queue.shift()!;
