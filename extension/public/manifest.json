@@ -1,7 +1,8 @@
 {
 	"manifest_version": 3,
-	"name": "Highlight Alert Extension",
-	"version": "1.0",
+	"name": "Mindapp",
+	"version": "1.0.1",
+	"icons": { "1024": "mindapp-logo.png" },
 	"description": "Alerts highlighted text when µ is typed",
 	"permissions": [],
 	"content_scripts": [
