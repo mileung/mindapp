@@ -90,6 +90,8 @@ export default function Results() {
 		() => useActiveSpace().fetchedSelf !== null || !useActiveSpace().host,
 	);
 
+	const [restrainLoad, restrainLoadSet] = createSignal(!!searchParams.json?.toString());
+
 	const loadMoreThoughts = async () => {
 		if (!pluggedIn() || pinging) return;
 		const lastRoot = roots.slice(-1)[0];
@@ -132,7 +134,8 @@ export default function Results() {
 
 	createEffect(() => {
 		let rootsLengthLastLoad: number;
-		const handleScroll = () => {
+		const handleScroll = async () => {
+			restrainLoadSet(false);
 			const scrollPosition = window.innerHeight + window.scrollY;
 			const documentHeight = document.body.offsetHeight;
 			if (roots.slice(-1)[0] !== null && scrollPosition >= documentHeight - 2000) {
@@ -148,7 +151,7 @@ export default function Results() {
 	});
 
 	createEffect(() => {
-		if (!roots.length && !pinging && pluggedIn()) {
+		if (!restrainLoad() && !roots.length && !pinging && pluggedIn()) {
 			mentionedThoughtsSet({});
 			thoughtsBeyond = mode() === 'old' ? 0 : Number.MAX_SAFE_INTEGER;
 			loadMoreThoughts();
@@ -256,7 +259,9 @@ export default function Results() {
 					</div>
 					{!roots.length ? (
 						<div class="xy">
-							<p class="text-lg font-semibold">Loading...</p>
+							<p class="text-lg font-semibold">
+								{restrainLoad() ? 'Scroll down to load' : 'Loading...'}
+							</p>
 						</div>
 					) : (
 						<div class=" space-y-1.5">
@@ -282,8 +287,6 @@ export default function Results() {
 									<p class="text-2xl">Thought not found</p>
 								</div>
 							)}
-							{/* This is for when the initial 8 roots that load don't extend past the bottom of the screen making scrolling impossible */}
-							{roots.length === 8 && <div class="h-screen"></div>}
 							{!thoughtId && roots[0] === null && (
 								<p class="text-2xl text-center">No thoughts found</p>
 							)}
@@ -294,6 +297,8 @@ export default function Results() {
 					)}
 				</div>
 			)}
+			{/* This is for when the initial 8 roots that load don't extend past the bottom of the screen making scrolling impossible */}
+			{roots[roots.length - 1] !== null && <div class="h-screen"></div>}
 		</div>
 	);
 }
