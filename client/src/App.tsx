@@ -1,220 +1,202 @@
-import { useEffect, useRef } from 'react';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import '@fontsource-variable/fira-code';
+import '@fontsource-variable/quicksand';
+import { MetaProvider, Title } from '@solidjs/meta';
+import { Router } from '@solidjs/router';
+import { FileRoutes } from '@solidjs/start/router';
+import { createEffect, createSignal, onMount, Suspense } from 'solid-js';
+import '~/styles/root.css';
+import '~/utils/theme';
+import { setThemeMode } from '~/utils/theme';
 import Header from './components/Header';
-import Home from './pages/Home';
-import ManagePersonas from './pages/ManagePersonas';
-import ManageSpaces from './pages/ManageSpaces';
-import Settings from './pages/Settings';
-import Tags from './pages/Tags';
-import UnlockPersona from './pages/UnlockPersona';
 import { Author } from './types/Author';
-import { tokenNetwork } from './types/TokenNetwork';
 import { buildUrl, hostedLocally, makeUrl, ping, post } from './utils/api';
-import { hashItem } from './utils/security';
+import { getCookie } from './utils/cookies';
+import { clone } from './utils/js';
+import { decrypt, hashItem } from './utils/security';
 import { RootSettings, Space, WorkingDirectory } from './utils/settings';
+import { sendMessage } from './utils/signing';
 import {
-	updateLocalState,
+	authors,
+	authorsSet,
+	fetchedSpaces,
+	fetchedSpacesSet,
+	passwords,
+	passwordsSet,
+	personas,
+	personasSet,
+	retryJoiningHost,
+	retryJoiningHostSet,
+	rootSettingsSet,
+	themeMode,
+	themeModeSet,
 	useActiveSpace,
-	useAuthors,
-	useFetchedSpaces,
-	useGetMnemonic,
-	useLocalState,
-	usePersonas,
-	useRootSettings,
-	useSendMessage,
 	useTagTree,
-	useWorkingDirectory,
+	workingDirectorySet,
 } from './utils/state';
 import { TagTree } from './utils/tags';
-import { setTheme } from './utils/theme';
+import { getIdbStore, updateIdbStore } from './utils/indexedDb';
+import { validateMnemonic } from '@scure/bip39';
+import { wordlist } from '@scure/bip39/wordlists/english';
+import { useAnon } from './types/PersonasPolyfill';
 
-function App() {
-	const [localState, localStateSet] = useLocalState();
-	const getMnemonic = useGetMnemonic();
-	const [, tagTreeSet] = useTagTree();
-	const [personas, personasSet] = usePersonas();
-	const [fetchedSpaces, fetchedSpacesSet] = useFetchedSpaces();
-	const sendMessage = useSendMessage();
-	const [authors, authorsSet] = useAuthors();
-	const [rootSettings, rootSettingsSet] = useRootSettings();
-	const [, workingDirectorySet] = useWorkingDirectory();
-	const themeRef = useRef(localState.theme);
+// const mindappChannel = new BroadcastChannel('mindapp_channel');
 
-	useEffect(() => {
-		if (!personas[0].id) return;
-		if (hostedLocally) {
-			ping<TagTree>(
-				makeUrl('receive-blocks'), //
-				post({ personaId: personas[0].id }),
-			).catch((err) => console.error(err));
-		} else {
-			const mnemonic = getMnemonic(personas[0].id);
-			const { walletAddress } = personas[0];
-			if (walletAddress && mnemonic) {
-				tokenNetwork.receiveBlocks(walletAddress, mnemonic);
-			}
-		}
-	}, [personas[0].id]);
+export default function App() {
+	const [idbLoaded, idbLoadedSet] = createSignal(false);
+	onMount(async () => {
+		// mindappChannel.onmessage = (event) => {
+		// 	if (event.data.type === 'UPDATE_STATE') {
+		// 		// TODO: make it an option to keep personas in sync across tabs?
+		// 	}
+		// };
 
-	useEffect(() => {
+		const initialIdbStore = await getIdbStore();
+		personasSet(initialIdbStore.personas);
+		fetchedSpacesSet(initialIdbStore.fetchedSpaces);
+
+		const cookieTheme = getCookie('theme');
+		themeModeSet((cookieTheme?.startsWith('system') ? 'system' : cookieTheme) || 'system');
+		setThemeMode(themeMode());
 		// does not exist on older browsers
 		if (window?.matchMedia('(prefers-color-scheme: dark)')?.addEventListener) {
-			window?.matchMedia('(prefers-color-scheme: dark)')?.addEventListener('change', () => {
-				setTheme(themeRef.current);
-			});
+			window
+				?.matchMedia('(prefers-color-scheme: dark)')
+				?.addEventListener('change', () => setThemeMode(themeMode()));
 		}
-	}, []);
 
-	useEffect(() => {
-		themeRef.current = localState.theme;
-		setTheme(localState.theme);
-	}, [localState?.theme]);
-
-	useEffect(() => {
-		if (!hostedLocally) return;
-		ping<{ rootSettings: RootSettings; workingDirectory: WorkingDirectory }>(
-			makeUrl('get-root-settings'),
-		)
-			.then(({ rootSettings, workingDirectory }) => {
-				rootSettingsSet(rootSettings);
-				workingDirectorySet(workingDirectory);
-			})
-			.catch((err) => console.error(err));
-		ping<WorkingDirectory>(makeUrl('get-working-directory'))
-			.then((data) => workingDirectorySet(data))
-			.catch((err) => console.error(err));
-		// ping<Persona[]>(
-		// 	makeUrl('get-personas'),
-		// 	post({
-		// 		order: getLocalState().personas.map(({ id }) => id),
-		// 	}),
-		// )
-		// 	.then((p) => {
-		// 		// console.log('p:', p);
-		// 		personasSet(p);
-		// 		localStateSet((old) => ({ ...old, personas: p }));
-		// 	})
-		// 	.catch((err) => console.error(err));
-	}, [!!rootSettings?.testWorkingDirectory]);
-
-	const activeSpace = useActiveSpace();
-	useEffect(() => {
-		const { host } = activeSpace;
-		const savedTagTree = fetchedSpaces[host]?.tagTree;
-		savedTagTree && tagTreeSet(savedTagTree);
-		if (!host) {
-			hostedLocally &&
-				ping<TagTree>(makeUrl('get-tag-tree'))
-					.then((data) => {
-						tagTreeSet(data);
-					})
-					.catch((err) => console.error(err));
-		} else {
-			const { id, name, frozen, walletAddress, writeDate, signature } = personas[0];
-			const tagTreeHash = savedTagTree && hashItem(savedTagTree);
-			sendMessage<{ space: Omit<Space, 'host'> }>({
-				from: id,
-				to: buildUrl({ host, path: 'update-space-author' }),
-				tagTreeHash,
-				signedAuthor: !id
-					? undefined
-					: {
-							id,
-							name,
-							frozen,
-							walletAddress,
-							writeDate,
-							signature,
-						},
-			})
-				.then(({ space }) => {
-					if (!id) space.fetchedSelf = new Author({});
-					fetchedSpacesSet((old) => ({
-						...old,
-						[host]: {
-							...old[host],
-							...space,
-							host,
-						},
-					}));
-					space.tagTree && tagTreeSet(space.tagTree);
-				})
-				.catch((err) => {
-					fetchedSpacesSet((old) => ({
-						...old,
-						[host]: { ...old[host], fetchedSelf: null },
-					}));
-				});
-		}
-	}, [activeSpace.host, personas[0].id]);
-
-	useEffect(() => {
-		authorsSet((old) => {
-			personas.forEach((p) => {
-				if (p.id && p.name) old[p.id] = { ...old[p.id], ...p };
-			});
-			return { ...old };
+		personas.forEach((persona) => {
+			if (persona.encryptedMnemonic) {
+				const decryptedMnemonic = decrypt(persona.encryptedMnemonic, '');
+				const valid = decryptedMnemonic && validateMnemonic(decryptedMnemonic, wordlist);
+				if (valid) {
+					passwordsSet((old) => ({ ...old, [persona.id]: '' }));
+				}
+			}
 		});
-		localStateSet((old) => ({ ...old, personas }));
+		passwords[personas[0].id] === undefined && useAnon();
+		idbLoadedSet(true);
+
 		if (hostedLocally) {
-			// TODO: Only update the persona that has its name changed?
-			ping(makeUrl('update-personas'), post({ personas: personas.filter((p) => !p.locked) })) //
-				.catch((err) => console.error(err));
+			const tagTree = await ping<TagTree>(makeUrl('get-tag-tree'));
+			fetchedSpacesSet((old) => {
+				old[''] = { host: '', tagTree };
+				return clone(old);
+			});
+			const { rootSettings, workingDirectory } = await ping<{
+				rootSettings: RootSettings;
+				workingDirectory: WorkingDirectory;
+			}>(makeUrl('get-root-settings'));
+			rootSettingsSet(rootSettings);
+			workingDirectorySet(workingDirectory);
 		}
-	}, [personas]);
+	});
 
-	useEffect(() => {
-		localStateSet((old) => ({ ...old, fetchedSpaces }));
-	}, [fetchedSpaces]);
+	createEffect((p) => {
+		const newStore = clone({ fetchedSpaces, personas });
+		const str = JSON.stringify(newStore);
+		if (!idbLoaded() || p === str) return p;
+		// TODO: this is not efficient but the clones are needed to trigger this function idk y
+		updateIdbStore(newStore);
+		return str;
+	});
 
-	useEffect(() => {
-		updateLocalState(localState);
-	}, [localState]);
+	// createEffect((p) => {
+	// 	const str = JSON.stringify({ fetchedSpaces, personas, passwords });
+	// 	if (!idbLoaded() || p === str) return p;
+	// 	mindappChannel.postMessage({
+	// 		type: 'UPDATE_STATE',
+	// 		value: str,
+	// 	});
+	// 	return str;
+	// });
+
+	// createEffect((p) => {
+	// 	const str = JSON.stringify({ personas, passwords });
+	// 	if (p === str) return p;
+	// 	if (hostedLocally) {
+	// 		ping(makeUrl('update-personas'), post({ personas, newPasswords: passwords })).catch((err) =>
+	// 			console.error(err),
+	// 		);
+	// 	}
+	// 	return str;
+	// });
+
+	createEffect((prev) => {
+		if (!idbLoaded()) return;
+		const authorsStr1 = JSON.stringify(authors);
+		if (prev === authorsStr1) return prev;
+		authorsSet((old) => {
+			personas.forEach((p) => (old[p.id] = { ...old[p.id], ...p }));
+			return clone(old);
+		});
+		const authorsStr2 = JSON.stringify(authors);
+		return authorsStr2;
+	});
+
+	createEffect(() => {
+		if (!personas[0].id) return;
+		// const mnemonic = getMnemonic(personas[0].id);
+		// const { walletAddress } = personas[0];
+		// if (walletAddress && mnemonic) {
+		// 	tokenNetwork.receiveBlocks(walletAddress, mnemonic);
+		// }
+	});
+
+	createEffect((lastHost) => {
+		if (!idbLoaded()) return;
+		let { host } = useActiveSpace();
+		if (!host || (lastHost === host && !retryJoiningHost())) return host;
+		if (retryJoiningHost()) host = retryJoiningHost();
+		retryJoiningHostSet('');
+		const { id, name, frozen, walletAddress, writeDate, signature } = personas[0];
+		const tagTreeHash = hashItem(useTagTree());
+		sendMessage<{ space: Omit<Space, 'host'> }>({
+			from: id,
+			to: buildUrl({ host, path: 'update-space-author' }),
+			tagTreeHash,
+			signedAuthor: !id
+				? undefined
+				: {
+						id,
+						name,
+						frozen,
+						walletAddress,
+						writeDate,
+						signature,
+				  },
+		})
+			.then(({ space }) => {
+				if (!id) space.fetchedSelf = new Author({});
+				fetchedSpacesSet((old) => ({
+					...old,
+					[host]: { ...old[host], ...space, host },
+				}));
+			})
+			.catch((err) => {
+				console.log('err:', err);
+				fetchedSpacesSet((old) => ({
+					...old,
+					[host]: { ...old[host], fetchedSelf: null },
+				}));
+			});
+		return host;
+	});
 
 	return (
-		<main>
-			<BrowserRouter>
-				<Header />
-				<Routes>
-					<Route path="/:idOrMode?/:mode?" Component={Home} />
-					<Route path="/unlock/:personaId" Component={UnlockPersona} />
-					{/* <Route path="/manage-persona/:personaId?" Component={ManagePersonas} /> */}
-					<Route path="/manage-personas/:personaId?" Component={ManagePersonas} />
-					{/* <Route path="/create-persona" Component={ManagePersonas} /> */}
-					<Route path="/manage-spaces/:spaceHost?" Component={ManageSpaces} />
-					{hostedLocally && <Route path="/tags/:tag?" Component={Tags} />}
-					<Route path="/settings" Component={Settings} />
-					{hostedLocally && <Route path="/test" Component={Test} />}
-					<Route path="/*" element={<Navigate replace to="/" />} />
-				</Routes>
-			</BrowserRouter>
-		</main>
+		<Router
+			root={(props) => (
+				<MetaProvider>
+					<Title>Mindapp</Title>
+					{idbLoaded() && (
+						<>
+							<Header />
+							<Suspense>{props.children}</Suspense>
+						</>
+					)}
+				</MetaProvider>
+			)}
+		>
+			<FileRoutes />
+		</Router>
 	);
 }
-
-export default App;
-
-// TODO: use Progressive Web App (PWA) like gab.com
-// http://localhost:1000/1720557792387__
-
-const Test = () => {
-	// TODO: decide how to simplify the persona creation flow
-	return (
-		<div className="">
-			<p className="">test</p>
-			<form method="post" action="/login">
-				{/* <TextInput required disabled label="Author ID" defaultValue="0xmike" />
-				<TextInput
-					required
-					password
-					label="Mnemonic"
-					defaultValue="century shock into glow color charge"
-				/>
-				<Button label="Next" /> */}
-				<input type="text" name="username" placeholder="Username" />
-				<input type="password" name="password" placeholder="Password" />
-				<button type="submit">Create persona</button>
-			</form>
-		</div>
-	);
-};

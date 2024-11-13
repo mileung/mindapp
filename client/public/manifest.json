@@ -1,0 +1,15 @@
+{
+	"short_name": "Mindapp",
+	"name": "Mindapp",
+	"icons": [
+		{
+			"src": "mindapp-logo.svg",
+			"type": "image/svg+xml",
+			"sizes": "any"
+		}
+	],
+	"start_url": ".",
+	"display": "standalone",
+	"theme_color": "#000000",
+	"background_color": "#000000"
+}

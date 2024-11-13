@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { createEffect } from 'solid-js';
 
 export function useKeyPress(
 	input:
@@ -9,9 +9,8 @@ export function useKeyPress(
 				allowRepeats?: boolean;
 		  },
 	callback: (e: KeyboardEvent) => void,
-	dependencies: any[],
 ) {
-	useEffect(() => {
+	createEffect(() => {
 		const {
 			key,
 			modifiers = [],
@@ -37,5 +36,5 @@ export function useKeyPress(
 			document.removeEventListener('keydown', handleKeyMove);
 			document.removeEventListener('keyup', handleKeyMove);
 		};
-	}, [JSON.stringify(input), callback, ...(dependencies || [])]);
+	});
 }

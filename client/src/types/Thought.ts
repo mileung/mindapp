@@ -121,7 +121,7 @@ export class Thought {
 	}
 
 	get mentionedIds() {
-		return [...` ${this.content} `.matchAll(thoughtIdsRegex)].map((match) => match[0].trim());
+		return [...` ${this.content} `.matchAll(thoughtIdsRegex)].map((match) => match[0]);
 	}
 
 	get id() {

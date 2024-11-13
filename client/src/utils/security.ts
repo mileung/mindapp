@@ -1,4 +1,4 @@
-import { Buffer } from 'buffer/';
+import { Buffer } from 'buffer';
 import CryptoJS from 'crypto-js';
 import * as bip32 from '@scure/bip32';
 import * as bip39 from '@scure/bip39';
@@ -19,7 +19,6 @@ export function encrypt(text: string, password = ''): string {
 	});
 	const encryptedBuffer = Buffer.from(encrypted.ciphertext.toString(), 'hex');
 	const ivBuffer = Buffer.from(iv.toString(), 'hex');
-
 	return `${base58.encode(ivBuffer)}:${base58.encode(encryptedBuffer)}`;
 }
 

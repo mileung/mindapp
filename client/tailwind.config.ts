@@ -1,7 +1,7 @@
 import type { Config } from 'tailwindcss';
 
 const config: Config = {
-	content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+	content: ['./src/**/*.{js,jsx,ts,tsx}'],
 	darkMode: 'class',
 	theme: {
 		extend: {
@@ -20,12 +20,6 @@ const config: Config = {
 			},
 		},
 	},
-	// plugins: {
-	// 	'postcss-import': {},
-	// 	'tailwindcss/nesting': {},
-	// 	tailwindcss: {},
-	// 	autoprefixer: {},
-	// },
 };
 
 export default config;

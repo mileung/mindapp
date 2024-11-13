@@ -1,112 +1,131 @@
+import { A } from '@solidjs/router';
+import { Icon } from 'solid-heroicons';
 import {
-	CubeIcon,
-	CubeTransparentIcon,
-	FingerPrintIcon,
-	PlayCircleIcon,
-} from '@heroicons/react/16/solid';
-import { useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
-import { Thought, getThoughtId } from '../utils/ClientThought';
+	arrowTopRightOnSquare,
+	cube,
+	cubeTransparent,
+	fingerPrint,
+} from 'solid-heroicons/solid-mini';
+import { createMemo, Setter } from 'solid-js';
+import { authors, fetchedSpaces } from '~/utils/state';
+import { localClientHost } from '../utils/api';
+import { getThoughtId, Thought } from '../utils/ClientThought';
 import { copyToClipboardAsync } from '../utils/js';
-import { useFetchedSpaces, useAuthors, useSavedFileThoughtIds } from '../utils/state';
 import { formatTimestamp } from '../utils/time';
 import DeterministicVisualId from './DeterministicVisualId';
-import { localClientHost } from '../utils/api';
 
-export default function ThoughtBlockHeader({
-	thought,
-	parsed,
-	parsedSet,
-}: {
-	thought: Thought;
-	parsed: boolean;
-	parsedSet: React.Dispatch<React.SetStateAction<boolean>>;
+export default function ThoughtBlockHeader(props: {
+	onLink?: () => void;
+	thought: () => Thought;
+	parsed: () => boolean;
+	parsedSet: Setter<boolean>;
 }) {
-	const [authors] = useAuthors();
-	const [fetchedSpaces] = useFetchedSpaces();
-	const thoughtId = useMemo(() => getThoughtId(thought), [thought]);
-	const spaceUrl = useMemo(() => {
+	const { thought, parsed, parsedSet } = props;
+	const thoughtId = createMemo(() => getThoughtId(thought()));
+	const spaceUrl = createMemo(() => {
 		const { protocol, host } = new URL(
-			`http${thought.spaceHost && !thought.spaceHost.startsWith('localhost') ? 's' : ''}:${thought.spaceHost || localClientHost}`,
+			`http${thought().spaceHost && !thought().spaceHost!.startsWith('localhost') ? 's' : ''}:${
+				thought().spaceHost || localClientHost
+			}`,
 		);
 		const parts = host.split('.').reverse();
 		const tld = parts[0];
 		const sld = parts[1];
 		return `${protocol}//${
-			thought.spaceHost && tld && sld ? `${sld}.${tld}` : localClientHost
-		}/${thoughtId}`;
-	}, [thought]);
-	const time = useMemo(() => formatTimestamp(thought.createDate), [thought.createDate]);
+			thought().spaceHost && tld && sld ? `${sld}.${tld}` : localClientHost
+		}/?q=${thoughtId()}`;
+	});
+	const time = createMemo(() => formatTimestamp(thought().createDate));
 
 	return (
-		<div className="mr-1 fx h-5 text-fg2 max-w-full">
-			<Link
+		<div class="mr-1 fx h-5 text-fg2 max-w-full">
+			<A
+				// TODO: open links in same tab if same domain and remember the scroll position of last page without refetching data. Once implemented, add the external link icon next to the space button
 				target="_blank"
-				to={`/${thoughtId}`}
-				className={`${time.length > 9 ? 'truncate' : ''} text-sm font-bold transition text-fg2 hover:text-fg1 px-1 -ml-1 h-6 xy`}
+				href={`/?q=${thoughtId()}`}
+				class={`${
+					time().length > 9 ? 'truncate' : ''
+				} text-sm font-bold transition text-fg2 hover:text-fg1 px-1 -ml-1 h-6 xy`}
 			>
-				{time}
-			</Link>
-			<Link
+				{time()}
+			</A>
+			<A
 				target="_blank"
-				to={`/@${thought.authorId || ''}`}
-				className={`h-6 px-1 truncate fx text-sm font-bold transition text-fg2 hover:text-fg1 ${authors[thought.authorId || ''] ? '' : 'italic'}`}
+				href={`/?q=@${thought().authorId || ''}`}
+				class={`h-6 px-1 truncate fx text-sm font-bold transition text-fg2 hover:text-fg1 ${
+					authors[thought().authorId || ''] ? '' : 'italic'
+				}`}
 			>
 				<DeterministicVisualId
-					input={thought.authorId}
-					className="rounded-full overflow-hidden h-3 w-3 mr-1"
+					input={thought().authorId}
+					class="rounded-full overflow-hidden h-3 w-3 mr-1"
 				/>
-				<p className="whitespace-nowrap truncate">
-					{thought.authorId ? authors[thought.authorId]?.name || 'No name' : 'Anon'}
+				<p class="whitespace-nowrap truncate">
+					{thought().authorId ? authors[thought().authorId!]?.name || 'No name' : 'Anon'}
 				</p>
-			</Link>
+			</A>
 			<a
 				target="_blank"
-				href={spaceUrl}
-				className={`h-6 px-1 mr-auto truncate fx text-sm font-bold transition text-fg2 hover:text-fg1 ${thought.spaceHost ? '' : 'italic'}`}
+				href={spaceUrl()}
+				class={`h-6 px-1 mr-auto truncate fx text-sm font-bold transition text-fg2 hover:text-fg1 ${
+					thought().spaceHost ? '' : 'italic'
+				}`}
 			>
 				<DeterministicVisualId
-					input={fetchedSpaces[thought.spaceHost || '']}
-					className="rounded-sm overflow-hidden h-3 w-3 mr-1"
+					input={fetchedSpaces[thought().spaceHost || ''] || thought().spaceHost}
+					class="rounded-sm overflow-hidden h-3 w-3 mr-1"
 				/>
-				<p className="whitespace-nowrap truncate">
-					{thought.spaceHost ? fetchedSpaces[thought.spaceHost]?.name || 'No name' : 'Local'}
+				<p
+					class={`whitespace-nowrap truncate ${
+						fetchedSpaces[thought().spaceHost || ''] ? '' : 'italic'
+					}`}
+				>
+					{thought().spaceHost
+						? fetchedSpaces[thought().spaceHost || '']?.name || thought().spaceHost
+						: 'Local'}
 				</p>
 			</a>
+			{props.onLink && (
+				<button class="flex-1 min-w-4 h-6 fx hover:text-fg1 transition" onClick={props.onLink}>
+					<Icon path={arrowTopRightOnSquare} class="absolute rotate-90 w-5" />
+				</button>
+			)}
 			{/* <button
-				className="h-6 px-1 hover:text-fg1 transition"
+				class="h-6 px-1 hover:text-fg1 transition"
 				// TODO: onClick={() => playTextToSpeechAudio()}
 				onClick={() => {
 					// Usage example
 					textToSpeech('Hello, this is a test of text-to-speech functionality.');
 				}}
 			>
-				<PlayCircleIcon className="h-4 w-4" />
+				<PlayCircleIcon class="h-4 w-4" />
 			</button> */}
 			{/* <button
-				className="h-6 px-1 hover:text-fg1 transition"
+				class="h-6 px-1 hover:text-fg1 transition"
 				// TODO: onClick={() => Translate()}
 				
 			>
-				<Translate className="h-4 w-4" />
+				<Translate class="h-4 w-4" />
 			</button> */}
 			<button
-				className="h-6 px-1 hover:text-fg1 transition"
-				onClick={() => copyToClipboardAsync(`${thoughtId}`)}
+				class="h-6 px-1 hover:text-fg1 transition"
+				onClick={() => copyToClipboardAsync(`${thoughtId()}`)}
 			>
-				<FingerPrintIcon className="h-4 w-4" />
+				<Icon path={fingerPrint} class="h-4 w-4" />
 			</button>
-			<button
-				className="-mr-1 h-6 px-1 hover:text-fg1 transition"
-				onClick={() => parsedSet(!parsed)}
-			>
-				{parsed ? <CubeIcon className="h-4 w-4" /> : <CubeTransparentIcon className="h-4 w-4" />}
+			<button class="-mr-1 h-6 px-1 hover:text-fg1 transition" onClick={() => parsedSet(!parsed())}>
+				{parsed() ? (
+					<Icon path={cube} class="h-4 w-4" />
+				) : (
+					<Icon path={cubeTransparent} class="h-4 w-4" />
+				)}
 			</button>
 		</div>
 	);
 }
 
 function textToSpeech(text: string) {
+	// TODO: Get this to work. Currently I just use macOS' built in text to speech, but not everyone has that.
 	if ('speechSynthesis' in window) {
 		const utterance = new SpeechSynthesisUtterance(text);
 

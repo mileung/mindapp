@@ -1,6 +1,14 @@
+import { useTagTree } from './state';
+
 export type TagTree = {
 	parents: Record<string, string[]>;
 	loners: string[];
+	// synonyms: string[][]
+	// tag names that are synonymous (like for acronyms or semantic reduction/ellipsis)
+	// synonyms: [
+	// 	['USA', 'United States of America'],
+	// 	['Soft Rock', 'Soft Rock Music'],
+	// ];
 };
 
 export type Tag = {
@@ -30,17 +38,18 @@ export function shouldBeLoner(tagTree: TagTree, tag: string) {
 }
 
 export function makeRootTag(tagTree: TagTree, label: string) {
-	if (!tagTree.loners.includes(label) && shouldBeLoner(tagTree, label)) return null;
+	if (!tagTree.loners.includes(label) && shouldBeLoner(useTagTree(), label)) return null;
 
-	const expand = (label: string, lineage: string[] = []): RecursiveTag => {
+	const expand = (label: string, parentLineage: string[] = []): RecursiveTag => {
 		const subTags = tagTree.parents[label];
+		const thisLineage = [...parentLineage, label];
 		return {
 			label,
-			lineage: [...lineage, label],
+			lineage: thisLineage,
 			subRecTags:
-				!subTags || lineage.includes(label)
+				!subTags || parentLineage.includes(label)
 					? null
-					: subTags.map((subsetLabel) => expand(subsetLabel, [...lineage, label])),
+					: subTags.map((subsetLabel) => expand(subsetLabel, thisLineage)),
 		};
 	};
 
@@ -57,7 +66,7 @@ export const getParentsMap = (tagTree: TagTree) => {
 	return obj;
 };
 
-export const getNodes = (tagTree: TagTree) => {
+export const getTagRelations = (tagTree: TagTree) => {
 	const { loners } = tagTree;
 	const parents: string[] = [];
 	const childrenSet = new Set<string>();
@@ -72,7 +81,7 @@ export const getNodes = (tagTree: TagTree) => {
 	return { loners, parents, children };
 };
 
-export const getNodesArr = (nodes: ReturnType<typeof getNodes>) => {
+export const listAllTags = (nodes: ReturnType<typeof getTagRelations>) => {
 	return [...nodes.loners, ...nodes.parents, ...nodes.children];
 };
 
@@ -98,7 +107,7 @@ export function getAllSubTags(tagTree: TagTree, tag: string): string[] {
 }
 
 export function scrubTagTree(tagTree: TagTree): TagTree {
-	const privateTags = new Set(getAllSubTags(tagTree, 'Private Tag'));
+	const privateTags = new Set(getAllSubTags(useTagTree(), 'Private Tag'));
 
 	const scrubbedTagTree: TagTree = {
 		parents: {},
@@ -129,4 +138,85 @@ export function scrubTagTree(tagTree: TagTree): TagTree {
 	scrubbedTagTree.loners = sortUniArr([...scrubbedTagTree.loners, ...tagTree.loners]);
 
 	return scrubbedTagTree;
+}
+
+export function sortKeysByNodeCount(tagTree: TagTree): string[] {
+	const allNodes = new Set<string>();
+	const childToParent: Record<string, string> = {};
+
+	// Build child-to-parent mapping and collect all nodes
+	for (const [parent, children] of Object.entries(tagTree.parents)) {
+		allNodes.add(parent);
+		for (const child of children) {
+			allNodes.add(child);
+			childToParent[child] = parent;
+		}
+	}
+
+	// Add loners to all nodes
+	for (const loner of tagTree.loners) {
+		allNodes.add(loner);
+	}
+
+	// Count descendants for each node
+	const descendantCounts: Record<string, number> = {};
+	for (const node of allNodes) {
+		countDescendants(node, tagTree.parents, descendantCounts, new Set());
+	}
+
+	// Sort keys by descendant count (from most to least)
+	const sortedKeys = Object.entries(descendantCounts)
+		.sort((a, b) => b[1] - a[1])
+		.map(([key, _]) => key);
+
+	// Filter out descendants of previous tags
+	const filteredKeys: string[] = [];
+	const descendants = new Set<string>();
+
+	for (const key of sortedKeys) {
+		if (!descendants.has(key)) {
+			filteredKeys.push(key);
+			addDescendants(key, tagTree.parents, descendants);
+		}
+	}
+
+	return filteredKeys;
+}
+
+function countDescendants(
+	node: string,
+	parents: Record<string, string[]>,
+	counts: Record<string, number>,
+	visited: Set<string>,
+): number {
+	if (visited.has(node)) {
+		return 0;
+	}
+
+	if (counts[node] !== undefined) {
+		return counts[node];
+	}
+
+	visited.add(node);
+
+	const children = parents[node] || [];
+	let count = children.length;
+
+	for (const child of children) {
+		count += countDescendants(child, parents, counts, visited);
+	}
+
+	counts[node] = count;
+	visited.delete(node);
+	return count;
+}
+
+function addDescendants(node: string, parents: Record<string, string[]>, descendants: Set<string>) {
+	const children = parents[node] || [];
+	for (const child of children) {
+		if (!descendants.has(child)) {
+			descendants.add(child);
+			addDescendants(child, parents, descendants);
+		}
+	}
 }

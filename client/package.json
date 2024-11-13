@@ -1,54 +1,60 @@
 {
-	"name": "mindapp-server",
-	"private": true,
-	"version": "0.0.0",
+	"name": "mindapp",
 	"type": "module",
+	"description": "Mindapp is the open source thought organizer",
 	"scripts": {
-		"dev": "vite --host",
-		"external": "vite --host --config vite-external-test.config.ts",
-		"build": "tsc && vite build",
-		"lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-		"preview": "vite preview"
+		"dev": "vinxi dev --port 1234",
+		"build": "vinxi build",
+		"start": "vinxi start",
+		"version": "vinxi version"
+	},
+	"prettier": {
+		"printWidth": 100,
+		"semi": true,
+		"singleQuote": true,
+		"useTabs": true,
+		"trailingComma": "all"
 	},
 	"dependencies": {
 		"@fontsource-variable/fira-code": "5.0.16",
 		"@fontsource-variable/quicksand": "5.0.16",
-		"@heroicons/react": "2.1.1",
-		"@noble/secp256k1": "2.1.0",
+		"@noble/curves": "1.6.0",
 		"@scure/base": "1.1.6",
 		"@scure/bip32": "1.4.0",
 		"@scure/bip39": "1.3.0",
+		"@solidjs/meta": "^0.29.4",
+		"@solidjs/router": "^0.14.10",
+		"@solidjs/start": "^1.0.9",
 		"@vite/vitejs": "2.3.19",
 		"ajv": "8.13.0",
 		"big.js": "6.2.1",
 		"buffer": "6.0.3",
 		"crypto-js": "4.2.0",
 		"dayjs": "1.11.10",
-		"jotai": "2.6.4",
+		"idb": "8.0.0",
 		"match-sorter": "6.3.4",
-		"react": "^18.2.0",
-		"react-dom": "^18.2.0",
-		"react-router-dom": "6.21.3",
-		"secp256k1": "5.0.1"
+		"node-forge": "1.3.1",
+		"secp256k1": "5.0.1",
+		"solid-heroicons": "3.2.4",
+		"solid-js": "^1.9.2"
+	},
+	"engines": {
+		"node": ">=18"
 	},
 	"devDependencies": {
 		"@types/big.js": "6.2.2",
 		"@types/crypto-js": "4.2.2",
 		"@types/node-forge": "1.3.11",
-		"@types/react": "^18.2.43",
-		"@types/react-dom": "^18.2.17",
 		"@types/secp256k1": "4.0.6",
-		"@typescript-eslint/eslint-plugin": "^6.14.0",
-		"@typescript-eslint/parser": "^6.14.0",
-		"@vitejs/plugin-react": "^4.2.1",
-		"autoprefixer": "10.4.16",
-		"eslint": "^8.55.0",
-		"eslint-plugin-react-hooks": "^4.6.0",
-		"eslint-plugin-react-refresh": "^0.4.5",
-		"postcss": "8.4.33",
-		"tailwindcss": "3.4.1",
-		"typescript": "^5.2.2",
-		"vite": "^5.0.8",
-		"vite-plugin-node-polyfills": "0.21.0"
+		"autoprefixer": "10.4.20",
+		"postcss": "8.4.47",
+		"tailwindcss": "3.4.14",
+		"vinxi": "0.4.3",
+		"vite-plugin-node-polyfills": "0.22.0"
+	},
+	"author": {
+		"name": "Michael Leung",
+		"email": "mileung@proton.me",
+		"url": "https://mindapp.cc/@zcWxb5meg4CTP1TkmtCSKGiihr1zo1wyuJRhnU3dqbTZ"
 	}
 }

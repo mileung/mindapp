@@ -1,43 +1,39 @@
-import { useMemo } from 'react';
+import { createMemo } from 'solid-js';
 import { Space } from '../utils/settings';
 
-const DeterministicVisualId = ({
-	className,
-	input = '',
-}: {
-	className?: string;
-	input?: Space | string;
-}) => {
-	input = typeof input === 'string' ? input : input?.host + (input.owner?.id || '');
-	const inputExists = useMemo(() => !!input, [input]);
-	const aaa = useMemo(() => stringToNumber(input, -35, -15), [input]);
-	const bbb = useMemo(() => stringToNumber(input.slice(4), 20, 40), [input]);
+const DeterministicVisualId = (props: { class?: string; input?: Space | string }) => {
+	const input = createMemo(() => {
+		const { input = '' } = props;
+		return typeof input === 'string' ? input : input?.host + (input?.owner?.id || '');
+	});
+	const aaa = createMemo(() => stringToNumber(input(), -35, -15));
+	const bbb = createMemo(() => stringToNumber(input()?.slice(4), 20, 40));
 
 	return (
 		<div
-			className={className}
+			class={props.class}
 			style={{
-				backgroundColor: inputExists ? stringToColor(input) : '#ccc',
+				'background-color': input() ? stringToColor(input()) : '#ccc',
 			}}
 		>
-			{inputExists && (
+			{input() && (
 				<div
-					className="mt-[50%] ml-[50%] h-full w-full"
+					class="mt-[50%] ml-[50%] h-full w-full"
 					style={{
-						rotate: stringToAngle(input),
-						transformOrigin: 'top left',
-						transform: `translateX(${aaa}%) translateY(${aaa}%)`,
+						rotate: stringToAngle(input()),
+						'transform-origin': 'top left',
+						transform: `translateX(${aaa()}%) translateY(${aaa()}%)`,
 					}}
 				>
 					<div
-						className="h-[150%] w-[150%]"
-						style={{ backgroundColor: stringToColor(input.slice(3)) }}
+						class="h-[150%] w-[150%]"
+						style={{ 'background-color': stringToColor(input().slice(3)) }}
 					>
 						<div
-							className="h-[60%] w-[60%]"
+							class="h-[60%] w-[60%]"
 							style={{
-								backgroundColor: stringToColor(input.slice(6)),
-								transform: `translateX(${bbb}%) translateY(${bbb}%)`,
+								'background-color': stringToColor(input().slice(6)),
+								transform: `translateX(${bbb()}%) translateY(${bbb()}%)`,
 							}}
 						></div>
 					</div>

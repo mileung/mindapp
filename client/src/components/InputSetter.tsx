@@ -1,51 +1,48 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { Accessor, createEffect } from 'solid-js';
 import InputAutoWidth from './InputAutoWidth';
 
-export function InputSetter({
-	title,
-	defaultValue,
-	onSubmit,
-}: {
+export function InputSetter(props: {
 	title?: string;
-	defaultValue: string;
+	defaultValue: Accessor<string>;
 	onSubmit: (value: string) => void;
 }) {
-	const draft = useRef(defaultValue);
-	const autoWidthIpt = useRef<HTMLInputElement>(null);
-	const keyDown = useRef(false);
+	const { title, defaultValue, onSubmit } = props;
+	let draft = defaultValue();
+	let autoWidthIpt: undefined | HTMLInputElement;
+	let keyDown = false;
 
-	const updateSetting = useCallback(() => {
-		const value = autoWidthIpt.current!.value.trim();
+	const updateSetting = () => {
+		const value = autoWidthIpt!.value.trim();
 		onSubmit(value);
-	}, [onSubmit]);
+	};
 
-	useEffect(() => {
-		autoWidthIpt.current!.value = defaultValue;
-		draft.current = defaultValue;
-	}, [defaultValue]);
+	createEffect(() => {
+		autoWidthIpt!.value = defaultValue();
+		draft = defaultValue();
+	});
 
 	return (
 		<div>
-			{title && <p className="leading-4 text font-semibold">{title}</p>}
+			{title && <p class="leading-4 text font-semibold">{title}</p>}
 			<InputAutoWidth
 				ref={autoWidthIpt}
-				defaultValue={defaultValue}
+				value={defaultValue()}
 				placeholder="Enter to submit"
-				className="leading-3 min-w-52 border-b-2 text-2xl font-medium transition border-mg2 hover:border-fg2 focus:border-fg2"
+				class="leading-3 min-w-52 border-b-2 text-2xl font-medium transition border-mg2 hover:border-fg2 focus:border-fg2"
 				onKeyDown={(e) => {
-					keyDown.current = true;
+					keyDown = true;
 					if (e.key === 'Escape') {
-						draft.current = defaultValue;
-						autoWidthIpt.current?.blur();
+						draft = defaultValue();
+						autoWidthIpt?.blur();
 					}
 					if (e.key === 'Enter') {
-						draft.current = autoWidthIpt.current!.value;
+						draft = autoWidthIpt!.value;
 						updateSetting();
-						autoWidthIpt.current?.blur();
+						autoWidthIpt?.blur();
 					}
 				}}
-				onKeyUp={() => (keyDown.current = true)}
-				onBlur={() => (autoWidthIpt.current!.value = draft.current)}
+				onKeyUp={() => (keyDown = true)}
+				onBlur={() => (autoWidthIpt!.value = draft)}
 			/>
 		</div>
 	);
