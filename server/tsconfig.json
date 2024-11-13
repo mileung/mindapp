@@ -11,6 +11,13 @@
 		"esModuleInterop": true,
 		"skipLibCheck": true,
 		"noImplicitAny": false,
+		// "target": "ESNext",
+		// "module": "CommonJS",
+		// "moduleResolution": "node",
+		// "rootDir": "./src",
+		// "outDir": "./dist",
+		// "esModuleInterop": true,
+		// "skipLibCheck": true,
 	},
 	"typeAcquisition": {
 		"exclude": ["@vite/vitejs"],

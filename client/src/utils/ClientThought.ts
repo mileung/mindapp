@@ -7,7 +7,6 @@ export type Thought = {
 	tags?: string[];
 	parentId?: string;
 	children?: Thought[];
-	filedSaved?: true;
 	votes?: {
 		own?: boolean;
 		up?: number;

@@ -181,6 +181,15 @@ export class Personas {
 		this.overwrite();
 	}
 
+	// for solid frontend
+	new_update(personas: Persona[]) {
+		personas.forEach((p) => {
+			if (p.id === undefined) throw new Error('Persona is missing id');
+			this.registry[p.id] = { ...p, id: undefined };
+		});
+		this.overwrite();
+	}
+
 	sendToken(personaId: string, toAddress: string, tokenId: string, amount: string) {
 		if (!personaId) throw new Error("Anon can't send tokens");
 		const persona = this.registry[personaId];

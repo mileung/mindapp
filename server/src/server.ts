@@ -149,7 +149,7 @@ app.use((req, res, next) => {
 	next();
 });
 
-const pass = (req, res, next) => next();
+const pass: RequestHandler = (req, res, next) => next();
 
 const writeLimiter = env.GLOBAL_HOST
 	? rateLimit({

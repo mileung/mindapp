@@ -24,12 +24,7 @@ export default function ThoughtBlockHeader({
 }) {
 	const [authors] = useAuthors();
 	const [fetchedSpaces] = useFetchedSpaces();
-	const [savedFileThoughtIds, savedFileThoughtIdsSet] = useSavedFileThoughtIds();
 	const thoughtId = useMemo(() => getThoughtId(thought), [thought]);
-	const filedSaved = useMemo(
-		() => savedFileThoughtIds[thoughtId],
-		[savedFileThoughtIds[thoughtId]],
-	);
 	const spaceUrl = useMemo(() => {
 		const { protocol, host } = new URL(
 			`http${thought.spaceHost && !thought.spaceHost.startsWith('localhost') ? 's' : ''}:${thought.spaceHost || localClientHost}`,
@@ -42,14 +37,6 @@ export default function ThoughtBlockHeader({
 		}/${thoughtId}`;
 	}, [thought]);
 	const time = useMemo(() => formatTimestamp(thought.createDate), [thought.createDate]);
-
-	useEffect(() => {
-		// OPTIMIZE: Results component could recursively set this
-		savedFileThoughtIdsSet((old) => ({
-			...old, //
-			[thoughtId]: !!thought.filedSaved,
-		}));
-	}, []);
 
 	return (
 		<div className="mr-1 fx h-5 text-fg2 max-w-full">
@@ -115,22 +102,6 @@ export default function ThoughtBlockHeader({
 			>
 				{parsed ? <CubeIcon className="h-4 w-4" /> : <CubeTransparentIcon className="h-4 w-4" />}
 			</button>
-			{/* <button
-				className="h-6 px-1 hover:text-fg1 transition"
-				onClick={() => {
-					savedFileThoughtIdsSet({ ...savedFileThoughtIds, [thoughtId]: !filedSaved });
-					ping(
-						makeUrl('write-local-file'),
-						post({ thought })
-					);
-				}}
-			>
-				{filedSaved ? (
-					<DocumentCheckIcon className="h-4 w-4" />
-				) : (
-					<ArrowDownTrayIcon className="h-4 w-4 text-" />
-				)}
-			</button> */}
 		</div>
 	);
 }

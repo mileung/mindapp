@@ -120,7 +120,6 @@ export class Thought {
 		parentId?: string;
 		votes?: Thought['votes'];
 		children?: Thought['clientProps'][];
-		filedSaved?: true;
 	} {
 		return {
 			createDate: this.createDate,
@@ -132,7 +131,6 @@ export class Thought {
 			parentId: this.parentId || undefined,
 			votes: this.votes || undefined,
 			children: this.children?.length ? this.children.map((c) => c.clientProps) : undefined,
-			filedSaved: env.GLOBAL_HOST ? undefined : isFile(this.filePath) || undefined,
 		} as const;
 	}
 

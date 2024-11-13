@@ -91,7 +91,7 @@ const updateSpaceAuthor: RequestHandler = async (req, res) => {
 			space.fetchedSelf = new Author(authorRow).clientProps;
 		}
 	}
-	return res.send({ space });
+	res.send({ space });
 };
 
 export default updateSpaceAuthor;

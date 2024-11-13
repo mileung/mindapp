@@ -223,8 +223,11 @@ export default function ManagePersonas() {
 															persona.encryptedMnemonic!,
 															oldPasswordIpt.value,
 														);
-														if (validateMnemonic(decryptedMnemonic, wordlist)) {
-															persona.encryptedMnemonic = encrypt(decryptedMnemonic, newPassword);
+														if (validateMnemonic(decryptedMnemonic || '', wordlist)) {
+															persona.encryptedMnemonic = encrypt(
+																decryptedMnemonic || '',
+																newPassword,
+															);
 															passwords[personaId] = newPassword;
 															changed = true;
 														}
@@ -260,7 +263,7 @@ export default function ManagePersonas() {
 												).mnemonic;
 											} else {
 												const persona = personas[personaIndex];
-												mnemonic = decrypt(persona.encryptedMnemonic!, pw);
+												mnemonic = decrypt(persona.encryptedMnemonic || '', pw) || '';
 											}
 
 											if (!validateMnemonic(mnemonic, wordlist)) {

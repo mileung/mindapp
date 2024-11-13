@@ -9,7 +9,6 @@ export default {
 	schema: './src/db/schema.ts',
 	out: './src/db/migrations',
 	dialect: 'sqlite',
-	driver: 'turso',
 	dbCredentials: {
 		// @ts-ignore
 		// url: process.env.TURSO_DATABASE_URL,

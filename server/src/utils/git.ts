@@ -1,6 +1,6 @@
 import simpleGit from 'simple-git';
 import { debounce } from './performance';
-import { minute } from './time';
+import { hour } from './time';
 import { WorkingDirectory } from '../types/WorkingDirectory';
 import env from './env';
 
@@ -26,7 +26,7 @@ const snapshot = () => {
 	}
 };
 
-const _debouncedSnapshot = debounce(snapshot, minute);
+const _debouncedSnapshot = debounce(snapshot, hour);
 export const debouncedSnapshot = () => {
 	if (env.GLOBAL_HOST) return; // TODO: allow global spaces to snapshot somehow
 	console.log('debouncedSnapshot');

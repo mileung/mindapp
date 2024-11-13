@@ -6,7 +6,10 @@ import { debouncedSnapshot } from '../utils/git';
 const renameTag: RequestHandler = (req, res) => {
 	const oldTag: string = req.body.oldTag;
 	const newTag: string = req.body.newTag.trim();
-	if (oldTag === newTag) return res.send({});
+	if (oldTag === newTag) {
+		res.send({});
+		return;
+	}
 	const tagTree = TagTree.get();
 	if (tagTree.parents[oldTag]) {
 		tagTree.parents[newTag] = tagTree.parents[oldTag];

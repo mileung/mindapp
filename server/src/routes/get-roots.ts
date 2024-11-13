@@ -47,7 +47,10 @@ const getRoots: RequestHandler = async (req, res) => {
 
 	if (thoughtId && !ignoreRootIds.length) {
 		const thought = await Thought.query(thoughtId);
-		if (!thought) return res.send({ mentionedThoughts: {}, roots: [] });
+		if (!thought) {
+			res.send({ mentionedThoughts: {}, roots: [] });
+			return;
+		}
 
 		const rootThought = await thought.getRootThought();
 		const { clientProps, allMentionedIds, allAuthorIds } = await rootThought.expand(from);

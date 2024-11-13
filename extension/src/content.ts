@@ -33,7 +33,7 @@ addEventListener('keydown', (e) => {
 		).toString();
 
 		window.open(
-			`http://localhost:1000/?${searchParams}`,
+			`http://localhost:1234/?${searchParams}`,
 			'newWindow',
 			`width=${popupWidth},height=${popupHeight},top=0,left=${99999999}`,
 		);
@@ -42,7 +42,7 @@ addEventListener('keydown', (e) => {
 
 const urlSelectors: Record<
 	string,
-	undefined | (() => { headline: string; url?: string; tags?: string[]; q?: string })
+	undefined | (() => { headline?: string; url?: string; tags?: string[]; q?: string })
 > = {
 	'www.youtube.com/watch': () => {
 		// @ts-ignore
@@ -84,13 +84,23 @@ const urlSelectors: Record<
 	},
 	'x.com': () => {
 		// @ts-ignore
-		const tweetText = document.querySelector('[data-testid="tweetText"]')?.innerText;
 		let author = location.pathname.slice(1);
 		const i = author.indexOf('/');
 		if (i !== -1) {
 			author = author.slice(0, i);
 		}
-		return { headline: tweetText, tags: [`Twitter@${author}`] };
+		const tweetId = location.pathname.match(/\/status\/(\d+)/)?.[1];
+		// TODO: Twitter has really messy messy HTML on purpose I think to make query selectors break. Make this more robust.
+		const tweetBlock = document.querySelector(`a[href="/${author}/status/${tweetId}"]`)
+			?.parentElement?.parentElement?.parentElement?.parentElement?.parentElement?.parentElement;
+		// @ts-ignore
+		const tweetText = tweetBlock?.querySelector('[data-testid="tweetText"]')?.innerText;
+
+		return {
+			headline: tweetText,
+			// No I will not change this to X@
+			tags: [`Twitter@${author}`],
+		};
 	},
 	'www.reddit.com': () => {
 		// @ts-ignore

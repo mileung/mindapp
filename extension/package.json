@@ -1,5 +1,6 @@
 {
 	"name": "extension",
+	"type": "module",
 	"scripts": {
 		"dev": "vite build --watch",
 		"build": "vite build"

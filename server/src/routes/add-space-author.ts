@@ -24,7 +24,7 @@ const addSpaceAuthor: RequestHandler = async (req, res) => {
 		addDate: Date.now(),
 	});
 
-	return res.send({});
+	res.send({});
 };
 
 export default addSpaceAuthor;

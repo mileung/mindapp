@@ -146,7 +146,7 @@ export const ThoughtWriter = ({
 								authorId: personas[0].id || undefined,
 								spaceHost: activeSpace.host || undefined,
 							}),
-				} as Omit<Thought, 'children' | 'filedSaved'>,
+				} as Omit<Thought, 'children'>,
 			};
 
 			if (!message.thought.tags?.length) delete message.thought.tags;

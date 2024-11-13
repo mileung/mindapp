@@ -81,7 +81,7 @@ export const usePersonas = createAtom<Persona[]>(
 		arr.forEach((p) => {
 			if (p.id && p.encryptedMnemonic) {
 				const decryptedMnemonic = decrypt(p.encryptedMnemonic, '');
-				if (!validateMnemonic(decryptedMnemonic, wordlist)) return;
+				if (!validateMnemonic(decryptedMnemonic || '', wordlist)) return;
 				passwords[p.id] = '';
 			}
 		});
@@ -129,10 +129,10 @@ export function useGetSignature() {
 				if (!persona) throw new Error('Persona not found');
 				if (persona.locked) throw new Error('Persona locked');
 				const decryptedMnemonic = decrypt(persona.encryptedMnemonic!, passwords[persona.id]);
-				if (!validateMnemonic(decryptedMnemonic, wordlist)) {
+				if (!validateMnemonic(decryptedMnemonic || '', wordlist)) {
 					throw new Error('Something went wrong');
 				}
-				const { publicKey, privateKey } = createKeyPair(decryptedMnemonic);
+				const { publicKey, privateKey } = createKeyPair(decryptedMnemonic || '');
 				if (publicKey !== personaId) {
 					throw new Error('Mnemonic on file does not correspond to personaId');
 				}
