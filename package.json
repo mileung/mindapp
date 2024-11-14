@@ -1,5 +1,6 @@
 {
 	"name": "mindapp",
+	"description": "Mindapp is the open source thought organizer",
 	"engines": {
 		"node": ">=20.12.2"
 	},
@@ -30,5 +31,10 @@
 	"devDependencies": {
 		"concurrently": "8.2.2",
 		"prettier": "3.2.4"
+	},
+	"author": {
+		"name": "Michael Leung",
+		"email": "mileung@proton.me",
+		"url": "https://mindapp.cc/?q=@2AdtePvSVUGJET9LZ4yVeoey6FiLhYiJiLZpCXvU8wXKT"
 	}
 }

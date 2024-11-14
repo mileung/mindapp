@@ -47,9 +47,7 @@ const urlSelectors: Record<
 	'www.youtube.com/watch': () => {
 		// @ts-ignore
 		const title: string = document.querySelector('h1.style-scope.ytd-watch-metadata')?.innerText;
-		const nameTag = document.querySelector(
-			'#upload-info .yt-simple-endpoint.style-scope.yt-formatted-string',
-		);
+		const nameTag = document.querySelector('#top-row yt-formatted-string a');
 		const ppHref = decodeURIComponent(
 			document.querySelector('#owner > ytd-video-owner-renderer > a')!.getAttribute('href')!,
 		);
