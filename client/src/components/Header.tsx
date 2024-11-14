@@ -160,15 +160,17 @@ export default function Header() {
 					// style={{ opacity: 'var(--header-opacity)' }}
 					onMouseMove={() => setGlobalCssVariable('header-opacity', '1')}
 				>
-					<button
-						class={`${
-							// I feel like this is bad ux?
-							useLocation().pathname === '/' ? 'md:hidden' : 'sm:hidden'
-						} xy -ml-2 mr-2 h-full w-10 text-fg2 transition hover:text-fg1`}
-						onClick={() => drawerOpenSet(!drawerOpen())}
-					>
-						<Icon path={bars_3} class="h-7 w-7" />
-					</button>
+					{['/', '/personas', '/spaces'].includes(useLocation().pathname) && (
+						<button
+							class={`${
+								// I feel like this is bad ux?
+								useLocation().pathname === '/' ? 'md:hidden' : 'sm:hidden'
+							} xy -ml-2 mr-2 h-full w-10 text-fg2 transition hover:text-fg1`}
+							onClick={() => drawerOpenSet(!drawerOpen())}
+						>
+							<Icon path={bars_3} class="h-7 w-7" />
+						</button>
+					)}
 					<a href="/" class="fx shrink-0">
 						<img
 							src={'/mindapp-logo.svg'}
@@ -374,8 +376,8 @@ export default function Header() {
 																? !thing.host
 																	? 'Local space'
 																	: fetchedSpaces[thing.host]?.fetchedSelf
-																	? fetchedSpaces[thing.host]!.name || 'No name'
-																	: '...'
+																		? fetchedSpaces[thing.host]!.name || 'No name'
+																		: '...'
 																: thing.name || (thingKey ? 'No name' : 'Anon')}
 														</p>
 														<p class="text-left font-mono text-fg2 leading-5 truncate">

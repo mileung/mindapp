@@ -116,19 +116,15 @@ export default function Home() {
 							})}
 						</div>
 					)}
-					{/* {!tagFilter() && !focusedTag() && (
-						<div class="border-t mt-3 py-1 border-mg1 xy">
-							<a
-								target="_blank"
-								// idk which url to use yet
-								href="https://github.com/mileung/solid.mindapp"
-								// href="https://github.com/mileung/mindapp"
-								class="text-center text-sm transition text-fg2 hover:text-fg1"
-							>
-								Mindapp source code
-							</a>
-						</div>
-					)} */}
+					<div class="border-t mt-3 py-1 border-mg1 xy">
+						<a
+							target="_blank"
+							href="https://github.com/mileung/mindapp"
+							class="text-center text-sm transition text-fg2 hover:text-fg1"
+						>
+							Mindapp source code
+						</a>
+					</div>
 				</div>
 			</div>
 		);
