@@ -215,7 +215,6 @@ const TagEditor = (props: {
 								if (e.key === 'ArrowDown') {
 									e.preventDefault();
 									const index = Math.min(tagIndex() + 1, filteredTags()!.length - 1);
-									console.log('index:', index);
 									tagSuggestionsRefs[index]?.focus();
 									addingIpt?.focus();
 									tagIndexSet(index);
