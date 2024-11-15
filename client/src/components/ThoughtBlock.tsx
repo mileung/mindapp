@@ -144,28 +144,15 @@ export default function ThoughtBlock(props: {
 						: alert('space missing downvoteAddress');
 				}
 				try {
-					if (hostedLocally) {
-						const { block } = await ping<{ block: typeof AccountBlockBlock }>(
-							makeUrl('send-token-amount'),
-							post({
-								personaId: personaId(),
-								toAddress,
-								tokenId: useActiveSpace().tokenId,
-								amount: '1',
-							}),
-						);
-						unsignedVote.txHash = block.hash;
-					} else {
-						// const privateKey = getMnemonic(personas[0].id);
-						// const block = await tokenNetwork.sendToken(
-						// 	walletAddress(),
-						// 	privateKey,
-						// 	toAddress,
-						// 	useActiveSpace().tokenId,
-						// 	'1',
-						// );
-						// unsignedVote.txHash = block.hash;
-					}
+					// const privateKey = getMnemonic(personas[0].id);
+					// const block = await tokenNetwork.sendToken(
+					// 	walletAddress(),
+					// 	privateKey,
+					// 	toAddress,
+					// 	useActiveSpace().tokenId,
+					// 	'1',
+					// );
+					// unsignedVote.txHash = block.hash;
 				} catch (error) {
 					upvotedSet(lastVote);
 					currentVote = lastVote;
@@ -215,7 +202,7 @@ export default function ThoughtBlock(props: {
 								: () => {
 										openSet(true);
 										linkingSet(true);
-								  }
+									}
 						}
 					/>
 					<div class={`z-10 pb-1 pr-1 ${open() ? '' : 'hidden'}`}>
@@ -359,10 +346,10 @@ export default function ThoughtBlock(props: {
 													(!!thought().spaceHost
 														? confirm(
 																'This thought may have been saved by other users in the space; delete it anyways?',
-														  )
+															)
 														: confirm(
 																'This thought has already been archived in the Git snapshot history; delete it anyways?',
-														  ));
+															));
 												if (!ok) return;
 												const newRoots = clone(roots);
 												let pointer = newRoots;

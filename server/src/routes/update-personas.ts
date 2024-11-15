@@ -4,7 +4,7 @@ import { debouncedSnapshot } from '../utils/git';
 
 const updatePersonas: RequestHandler = async (req, res) => {
 	const { personas } = req.body as { personas: Persona[] };
-	Personas.get().update(personas);
+	Personas.get().update(new Personas({ list: personas }).list);
 	res.send({});
 	debouncedSnapshot();
 };

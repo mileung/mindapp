@@ -82,6 +82,7 @@ export default function Header() {
 		searchedText().trim().replace(bracketRegex, '').replace(/\s\s+/g, ' ').trim(),
 	);
 
+	const pathname = createMemo(() => useLocation().pathname);
 	const allTags = createMemo(() =>
 		!suggestTags() ? [] : listAllTags(getTagRelations(useTagTree())),
 	);
@@ -160,11 +161,13 @@ export default function Header() {
 					// style={{ opacity: 'var(--header-opacity)' }}
 					onMouseMove={() => setGlobalCssVariable('header-opacity', '1')}
 				>
-					{['/', '/personas', '/spaces'].includes(useLocation().pathname) && (
+					{(pathname() === '/' ||
+						pathname().startsWith('/personas') ||
+						pathname().startsWith('/spaces')) && (
 						<button
 							class={`${
 								// I feel like this is bad ux?
-								useLocation().pathname === '/' ? 'md:hidden' : 'sm:hidden'
+								pathname() === '/' ? 'md:hidden' : 'sm:hidden'
 							} xy -ml-2 mr-2 h-full w-10 text-fg2 transition hover:text-fg1`}
 							onClick={() => drawerOpenSet(!drawerOpen())}
 						>

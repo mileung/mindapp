@@ -135,7 +135,7 @@ export default function Results() {
 	createEffect(() => {
 		let rootsLengthLastLoad: number;
 		const handleScroll = async () => {
-			restrainLoadSet(false);
+			restrainLoad() && restrainLoadSet(false);
 			const scrollPosition = window.innerHeight + window.scrollY;
 			const documentHeight = document.body.offsetHeight;
 			if (roots.slice(-1)[0] !== null && scrollPosition >= documentHeight - 2000) {

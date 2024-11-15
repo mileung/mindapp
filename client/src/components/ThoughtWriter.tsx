@@ -25,7 +25,6 @@ import {
 	sortUniArr,
 	TagTree,
 } from '~/utils/tags';
-import TextareaAutoHeight from './TextareaAutoHeight';
 import { addPersona } from '~/types/PersonasPolyfill';
 
 export const ThoughtWriter = (props: {
@@ -128,12 +127,12 @@ export const ThoughtWriter = (props: {
 							createDate: +createDate,
 							authorId: authorId || undefined,
 							spaceHost: spaceHost || undefined,
-					  }
+						}
 					: {
 							createDate: Date.now(),
 							authorId: personas[0].id || undefined,
 							spaceHost: useActiveSpace().host || undefined,
-					  }),
+						}),
 			} as Omit<Thought, 'children'>,
 		};
 
@@ -187,15 +186,11 @@ export const ThoughtWriter = (props: {
 
 	return (
 		<div class="w-full flex flex-col">
-			<TextareaAutoHeight
-				// autofocus
-				defaultValue={defaultValue()}
-				ref={contentTextArea}
-				onFocus={(e) => {
-					// focuses on the end of the input value when editing
-					const tempValue = e.target.value;
-					e.target.value = '';
-					e.target.value = tempValue;
+			<textarea
+				autofocus
+				ref={(t) => {
+					contentTextArea = t;
+					t.value = defaultValue();
 				}}
 				name="content"
 				placeholder="New thought"

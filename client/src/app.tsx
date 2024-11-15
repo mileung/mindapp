@@ -110,16 +110,14 @@ export default function App() {
 	// 	return str;
 	// });
 
-	// createEffect((p) => {
-	// 	const str = JSON.stringify({ personas, passwords });
-	// 	if (p === str) return p;
-	// 	if (hostedLocally) {
-	// 		ping(makeUrl('update-personas'), post({ personas, newPasswords: passwords })).catch((err) =>
-	// 			console.error(err),
-	// 		);
-	// 	}
-	// 	return str;
-	// });
+	createEffect((p) => {
+		const str = JSON.stringify({ personas });
+		if (p === str) return p;
+		if (hostedLocally) {
+			ping(makeUrl('update-personas'), post({ personas })).catch((err) => console.error(err));
+		}
+		return str;
+	});
 
 	createEffect((prev) => {
 		if (!idbLoaded()) return;
@@ -163,7 +161,7 @@ export default function App() {
 						walletAddress,
 						writeDate,
 						signature,
-				  },
+					},
 		})
 			.then(({ space }) => {
 				if (!id) space.fetchedSelf = new Author({});

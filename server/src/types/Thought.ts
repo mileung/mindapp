@@ -211,25 +211,15 @@ export class Thought {
 		};
 	}
 
-	signAsAuthor() {
-		this.signature = this.authorId
-			? Personas.get().getSignature(this.signedProps, this.authorId)
-			: '';
-	}
-
 	verifySignature() {
 		if (this.authorId) {
 			if (this.content) {
 				if (this.signature) {
 					const valid = verifyItem(this.signedProps, this.authorId, this.signature);
 					if (!valid) {
-						// this.signAsAuthor();
-						// this.overwrite();
 						throw new Error('Invalid signature');
 					}
 				} else {
-					// this.signAsAuthor();
-					// this.overwrite();
 					throw new Error('signature missing');
 				}
 			} else if (this.signature) {
