@@ -2,7 +2,7 @@ import { useLocation, useNavigate, useSearchParams } from '@solidjs/router';
 import { matchSorter } from 'match-sorter';
 import { Icon } from 'solid-heroicons';
 import { plus, userPlus, xCircle } from 'solid-heroicons/solid-mini';
-import { createMemo, createSignal } from 'solid-js';
+import { createEffect, createMemo, createSignal } from 'solid-js';
 import { SignedAuthor } from '~/types/Author';
 import { buildUrl, hostedLocally, localApiHost, makeUrl, ping, post } from '~/utils/api';
 import { Thought } from '~/utils/ClientThought';
@@ -179,6 +179,12 @@ export const ThoughtWriter = (props: {
 		}
 	});
 
+	createEffect(() => {
+		if (suggestTags()) {
+			tagIndexSet(addedTags().length ? -1 : 0);
+		}
+	});
+
 	useKeyPress({ key: 'ArrowDown' }, (e) => {
 		// TODO: move focus to first thought
 		// Make the ux similar to using VS Code and Markdown
@@ -187,10 +193,10 @@ export const ThoughtWriter = (props: {
 	return (
 		<div class="w-full flex flex-col">
 			<textarea
-				autofocus
 				ref={(t) => {
 					contentTextArea = t;
 					t.value = defaultValue();
+					setTimeout(() => t.focus(), 0); // autofocus doesn't work reliably
 				}}
 				name="content"
 				placeholder="New thought"

@@ -98,7 +98,7 @@ export default function Tags() {
 	});
 
 	const refreshTagTree = async () => {
-		if (!hostedLocally) return alert('Run Mindapp locally to Edit tags');
+		if (!hostedLocally) return alert('Run Mindapp locally to edit tags');
 		tagIndexSet(null);
 		const tagTree = await ping<TagTree>(makeUrl('get-tag-tree'));
 		fetchedSpacesSet((old) => {
@@ -108,7 +108,7 @@ export default function Tags() {
 	};
 
 	const addRootTag = (newTag: string, ctrlKey: boolean, altKey: boolean) => {
-		if (!hostedLocally) return alert('Run Mindapp locally to Edit tags');
+		if (!hostedLocally) return alert('Run Mindapp locally to edit tags');
 		altKey && tagFilterSet('');
 		subTaggingLineageSet(ctrlKey ? [newTag] : []);
 		ping(makeUrl('add-tag'), post({ tag: newTag }))
@@ -117,7 +117,7 @@ export default function Tags() {
 	};
 
 	const addParentTag = (e: KeyboardEvent | MouseEvent, parentTag: string) => {
-		if (!hostedLocally) return alert('Run Mindapp locally to Edit tags');
+		if (!hostedLocally) return alert('Run Mindapp locally to edit tags');
 		if (!rootTag()?.label || !parentTag) return;
 		!e.altKey && addingParentSet(false);
 		parentTagFilterSet('');
@@ -129,7 +129,7 @@ export default function Tags() {
 	};
 
 	const addSubtag = (tag: string, parentTag: string, newSubTaggingLineage: string[]) => {
-		if (!hostedLocally) return alert('Run Mindapp locally to Edit tags');
+		if (!hostedLocally) return alert('Run Mindapp locally to edit tags');
 		subTaggingLineageSet(newSubTaggingLineage);
 		!newSubTaggingLineage && searchIpt?.focus();
 		return ping(makeUrl('add-tag'), post({ tag, parentTag }))
@@ -138,7 +138,7 @@ export default function Tags() {
 	};
 
 	const renameTag = async (oldTag: string, newTag: string, newSubTaggingLineage: string[]) => {
-		if (!hostedLocally) return alert('Run Mindapp locally to Edit tags');
+		if (!hostedLocally) return alert('Run Mindapp locally to edit tags');
 		replaceTag(newTag);
 		subTaggingLineageSet(newSubTaggingLineage);
 		return (
@@ -150,7 +150,7 @@ export default function Tags() {
 	};
 
 	const removeTag = (tag: string, parentTag?: string) => {
-		if (!hostedLocally) return alert('Run Mindapp locally to Edit tags');
+		if (!hostedLocally) return alert('Run Mindapp locally to edit tags');
 		return ping(makeUrl('remove-tag'), post({ tag, parentTag }))
 			.then(() => refreshTagTree())
 			.then(() => searchIpt?.focus())
@@ -170,7 +170,7 @@ export default function Tags() {
 				: Math.min(
 						Math.max(tagIndex()! + (e.key === 'ArrowUp' ? -1 : 1), 0),
 						filteredTags()!.length - 1,
-				  );
+					);
 		tagSuggestionsRefs[index]?.focus();
 		searchIpt?.focus();
 		tagIndexSet(index);

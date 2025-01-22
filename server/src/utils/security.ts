@@ -6,6 +6,11 @@ import { base58 } from '@scure/base';
 import * as secp256k1 from 'secp256k1';
 import { sortKeysRecursively } from './js';
 
+// NOTE: base64 is much faster than base58
+// I didn't know that when I picked base58 for its popularity in crypto
+// But it also uses slashes which is problematic
+// use base32?
+
 export type Item = string | Record<string, any> | any[];
 
 export function encrypt(text: string, password: string) {

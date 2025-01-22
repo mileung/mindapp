@@ -227,13 +227,13 @@ export default function Results() {
 						)}
 						{(
 							[
-								// [fire, 'Hot'],
-								// [trophy, 'Top'],
+								// [fire, 'Hot'], // Top posts in last 24 hours
+								// [trophy, 'Top'], // Tops posts of all time
 								[barsArrowDown, 'New'],
 								[barsArrowUp, 'Old'],
 
 								// This could just be a query getting post that await a user's interaction
-								// [chatBubbleLeftRight, 'Replies'],
+								// [chatBubbleLeftRight, 'Inbox'], // Unaddressed, sent
 							] as const
 						).map(([iconPath, label], i) => {
 							const params: Record<string, string> = {};

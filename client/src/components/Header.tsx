@@ -76,7 +76,7 @@ export default function Header() {
 	const [switchingSpaces, switchingSpacesSet] = createSignal(false);
 	const [switchingPersonas, switchingPersonasSet] = createSignal(false);
 	const [searchedText, searchedTextSet] = createSignal(searchParams.q?.toString() || '');
-	const [tagIndex, tagIndexSet] = createSignal<number>(0);
+	const [tagIndex, tagIndexSet] = createSignal<number>(-1);
 	const addedTags = createMemo(() => getTags(searchedText()));
 	const tagFilter = createMemo(() =>
 		searchedText().trim().replace(bracketRegex, '').replace(/\s\s+/g, ' ').trim(),
@@ -198,7 +198,7 @@ export default function Header() {
 								}}
 								onInput={(e) => {
 									suggestTagsSet(true);
-									tagIndexSet(addedTags().length ? -1 : 0);
+									tagIndexSet(-1);
 									searchedTextSet(e.target.value);
 								}}
 								onKeyDown={(e) => {
