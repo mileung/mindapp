@@ -12,6 +12,7 @@ addEventListener('keydown', (e) => {
 		const thoughtHeadline = (
 			selector?.headline ||
 			window.getSelection()!.toString() ||
+			// getHighlightedTextAsMd() ||
 			findLargestText()
 		).trim();
 
@@ -138,7 +139,7 @@ const urlSelectors: Record<
 	},
 	'www.perplexity.ai': () => {
 		// @ts-ignore
-		const headline = document.querySelector('h1').innerText;
+		const headline = document.querySelector('h1')?.innerText;
 		console.log('headline:', headline);
 		return { headline };
 	},
@@ -175,4 +176,55 @@ const getCurrentYouTubeVideoId = () => {
 	return url.hostname === 'youtu.be' ? url.pathname.slice(1) : url.searchParams.get('v');
 };
 
+function getHighlightedTextAsMd(): string {
+	const selection = window.getSelection();
+	if (!selection || !selection.rangeCount) return '';
+
+	const range = selection.getRangeAt(0);
+	const fragment = range.cloneContents();
+	const tempDiv = document.createElement('div');
+	tempDiv.appendChild(fragment);
+
+	function getAbsoluteUrl(url: string): string {
+		const a = document.createElement('a');
+		a.href = url;
+		return a.href;
+	}
+
+	function processNode(node: Node): string {
+		if (node.nodeType === Node.TEXT_NODE) {
+			let text = node.textContent?.replace(/\s+/g, ' ') || '';
+			const parentElement = node.parentElement;
+			if (parentElement) {
+				const styles = window.getComputedStyle(parentElement);
+				if (styles.fontWeight === 'bold' || parseInt(styles.fontWeight) >= 700) {
+					text = `**${text}**`;
+				}
+				if (styles.fontStyle === 'italic') {
+					text = `*${text}*`;
+				}
+				if (styles.textDecoration.includes('line-through')) {
+					text = `~~${text}~~`;
+				}
+			}
+			return text;
+		}
+		if (node.nodeType === Node.ELEMENT_NODE) {
+			let content = Array.from(node.childNodes).map(processNode).join('').replace(/\s+/g, ' ');
+
+			if (node instanceof HTMLAnchorElement) {
+				const href = getAbsoluteUrl(node.getAttribute('href') || '');
+				return `[${content.trim()}](${href}) `;
+			}
+
+			return content;
+		}
+		return '';
+	}
+	return processNode(tempDiv).replace(/\s+/g, ' ').trim();
+}
+
 export {};
+
+// can my chrome extension add suggestions in url bar
+// https://www.perplexity.ai/search/can-my-chrome-extension-add-su-k3v324tMQHiu8Sf1BshL9w
