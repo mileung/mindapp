@@ -109,19 +109,7 @@
 	});
 </script>
 
-{#snippet thumbnail(src: string)}
-	<img
-		loading="lazy"
-		crossorigin="anonymous"
-		class="h-42 bg-bg3 aspect-video object-cover"
-		{src}
-		alt={p.alt || m.thumbnail()}
-	/>
-{/snippet}
-
-{#if imgSrc || iframeSrc}
-	{#if iframeSrc}
-		<button
+{#if imgSrc || iframeSrc}{#if iframeSrc}<button
 			bind:this={toggleBtn}
 			class="h-6 w-6 bg-bg5 hover:bg-bg7 hover:text-fg3 xy inline-flex translate-y-1"
 			onclick={() => (open = !open)}
@@ -131,15 +119,10 @@
 					open = false;
 				}
 			}}
-		>
-			{#if open}
-				<IconArrowsMinimize class="absolute h-5 w-5" />
-			{:else}
-				<IconArrowsMaximize class="absolute h-5 w-5" />
-			{/if}
-		</button>
-		{#if open && iframeType}
-			<div
+			>{#if open}<IconArrowsMinimize class="absolute h-5 w-5" />{:else}<IconArrowsMaximize
+					class="absolute h-5 w-5"
+				/>{/if}</button
+		>{#if open && iframeType}<span
 				class={`flex overflow-clip flex-col mr-8 max-h-[64vh] ${
 					(
 						{
@@ -149,8 +132,7 @@
 						} as Record<typeof iframeType, string>
 					)[iframeType] || (isTouchScreen ? 'h-80' : 'aspect-[3/4]')
 				}`}
-			>
-				<div
+				><span
 					class={`flex-1 flex flex-col ${
 						(
 							{
@@ -158,21 +140,16 @@
 							} as Record<typeof iframeType, string>
 						)[iframeType] || ''
 					}`}
-				>
-					<!-- scrolling="no" -->
-					{#if supportsCredentiallessIframe}
-						<CredentiallessIframe allowfullscreen class="flex-1" src={iframeSrc} />
-					{:else}
-						<iframe allowfullscreen class="flex-1" src={iframeSrc}></iframe>
-					{/if}
-				</div>
-			</div>
-		{/if}
-	{/if}
-	{#if imgSrc}
-		{#if !iframeSrc}
-			<button class={`block ${open ? '' : 'hidden'}`} onclick={() => (open = false)}>
-				<img
+					>{#if supportsCredentiallessIframe}<CredentiallessIframe
+							allowfullscreen
+							class="flex-1"
+							src={iframeSrc}
+						/>{:else}<iframe allowfullscreen class="flex-1" src={iframeSrc}></iframe>{/if}</span
+				></span
+			>{/if}{/if}{#if imgSrc}{#if !iframeSrc}<button
+				class={`block ${open ? '' : 'hidden'}`}
+				onclick={() => (open = false)}
+				><img
 					bind:this={openImg}
 					loading="lazy"
 					crossorigin="anonymous"
@@ -180,17 +157,18 @@
 					alt={p.alt ?? m.thumbnail()}
 					class={`min-h-42 ${openImgStyle ? '' : 'max-h-[80vh]'} bg-bg3 object-contain`}
 					style={openImgStyle}
-				/>
-			</button>
-		{/if}
-		<button
+				/></button
+			>{/if}<button
 			class={`block ${open ? 'hidden' : ''}`}
 			onclick={() => {
 				open = true;
 				toggleBtn?.focus();
 			}}
-		>
-			{@render thumbnail(imgSrc)}
-		</button>
-	{/if}
-{/if}
+			><img
+				loading="lazy"
+				crossorigin="anonymous"
+				class="h-42 bg-bg3 aspect-video object-cover"
+				src={imgSrc}
+				alt={p.alt || m.thumbnail()}
+			/></button
+		>{/if}{/if}

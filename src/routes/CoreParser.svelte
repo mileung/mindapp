@@ -197,6 +197,8 @@
 	};
 
 	let blocks = $derived(parseCore(p.core));
+	let linkClass =
+		'align-top inline-block max-w-[calc(100%-88px)] mini-x-scroll text-fg1 hover:text-fg3 underline decoration-hl1 hover:decoration-hl2';
 </script>
 
 {#each blocks as block}
@@ -226,37 +228,19 @@
 		<pre class="whitespace-pre-wrap break-all font-mono text-sm bg-bg3 p-1">{block.content}</pre>
 	{:else if block.type === 'paragraph'}
 		<p class="whitespace-pre-wrap break-words">
-			{#each block.nodes as node}
-				{#if node.type === 'text'}
-					{node.content}
-				{:else if node.type === 'code'}
-					<code class="font-mono text-sm bg-bg3 px-1">{node.content}</code>
-				{:else if node.type === 'boldAndItalic'}
-					<strong><em>{node.content}</em></strong>
-				{:else if node.type === 'bold'}
-					<strong>{node.content}</strong>
-				{:else if node.type === 'italic'}
-					<em>{node.content}</em>
-				{:else if node.type === 'link'}
-					<a
+			{#each block.nodes as node}{#if node.type === 'text'}{node.content}{:else if node.type === 'code'}<code
+						class="font-mono text-sm bg-bg3 px-1">{node.content}</code
+					>{:else if node.type === 'boldAndItalic'}<strong><em>{node.content}</em></strong
+					>{:else if node.type === 'bold'}<strong>{node.content}</strong
+					>{:else if node.type === 'italic'}<em>{node.content}</em>{:else if node.type === 'link'}<a
 						target="_blank"
 						href={node.content}
-						class="align-top inline-block max-w-[calc(100%-88px)] mini-x-scroll text-fg1 hover:text-fg3 underline decoration-hl1 hover:decoration-hl2"
-					>
-						{node.content}
-					</a>
-					<CoreWidget url={node.content} />
-				{:else if node.type === 'image'}
-					!({node.alt})[<a
-						target="_blank"
-						href={node.url}
-						class="align-top inline-block max-w-[calc(100%-88px)] mini-x-scroll text-fg1 hover:text-fg3 underline decoration-hl1 hover:decoration-hl2"
-					>
-						{node.url}
-					</a>]
-					<CoreWidget imageUrl={node.url} alt={node.alt} />
-				{/if}
-			{/each}
+						class={linkClass}>{node.content}</a
+					><CoreWidget url={node.content} />{:else if node.type === 'image'}!({node.alt})[
+					<a target="_blank" href={node.url} class={linkClass}>{node.url}</a>]<CoreWidget
+						imageUrl={node.url}
+						alt={node.alt}
+					/>{/if}{/each}
 		</p>
 	{/if}
 {/each}
