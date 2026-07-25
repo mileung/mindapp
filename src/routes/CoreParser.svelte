@@ -44,11 +44,9 @@
 
 		let flushParagraph = () => {
 			if (paragraphNodes.length) {
-				for (let i = 0; i < paragraphNodes.length; i++) {
-					let paragraphNode = paragraphNodes[i];
-					if (paragraphNode.type !== 'image') {
-						paragraphNode.content = paragraphNode.content.trimStart();
-					}
+				let firstNode = paragraphNodes[0];
+				if (firstNode.type !== 'image') {
+					firstNode.content = firstNode.content.trimStart();
 				}
 				blocks.push({ type: 'paragraph', nodes: paragraphNodes });
 				paragraphNodes = [];
