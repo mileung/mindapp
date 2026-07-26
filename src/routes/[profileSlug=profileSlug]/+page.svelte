@@ -116,7 +116,7 @@
 				<div class="h-0.5 mt-2 w-full bg-bg8"></div>
 				<p class="text-xl font-bold">{m.mutualSpaces()}</p>
 				{#each mutualSpaceMsAndJoinMsArr as [spaceMs, joinMs]}
-					<a href={`/__${spaceMs}?q=${page.params.profileSlug}`} class="h-9 fx hover:bg-bg3 w-full">
+					<a href={`/${spaceMs}__?q=${page.params.profileSlug}`} class="h-9 fx hover:bg-bg3 w-full">
 						<SpaceIcon ms={spaceMs} class="h-8 w-8" />
 						<p class="ml-2 text-lg font-bold">{msToSpaceNameTxt(spaceMs)}</p>
 						<p class="ml-auto">{m.joinedD({ d: formatMs(joinMs, 'day') })}</p>
