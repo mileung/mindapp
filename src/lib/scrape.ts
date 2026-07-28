@@ -56,7 +56,7 @@ export let scrape = (externalUrl: string, externalDomString: string) => {
 					);
 					url = externalUrl.slice(0, endI);
 					// extensionSearchQ = `[amazon.com] ${pathnameSlugs[2]}`;
-					extensionSearchQ = `[amazon.com] ${pathnameSlugs[1]}`;
+					// extensionSearchQ = `[amazon.com] ${pathnameSlugs[1]}`;
 				}
 			},
 			ebay: () => {
