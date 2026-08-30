@@ -17,6 +17,7 @@ import {
 import { pc } from '$lib/types/parts/partCodes';
 import { pf } from '$lib/types/parts/partFilters';
 import { pTable } from '$lib/types/parts/partsTable';
+import { PostFeedSectionSchema } from '$lib/types/posts/getPostFeed';
 import {
 	permissionCodes,
 	reduceMySpaceUpdateRows,
@@ -24,6 +25,7 @@ import {
 	type MySpaceUpdate,
 } from '$lib/types/spaces';
 import { and, or } from 'drizzle-orm';
+import { z } from 'zod';
 import { tdb } from './db';
 
 // export let getCallerContext = async (get: GetCallerContextGetArg) => {
@@ -33,6 +35,18 @@ import { tdb } from './db';
 // 		? trpc().getCallerContext.mutate({ ...baseInput, get })
 // 		: _getCallerContext(await gsdb(), null, baseInput, get);
 // };
+
+export let GetCallerContextAndThenSchema = z
+	.strictObject({
+		getPostFeed: z
+			.strictObject({
+				sections: z.array(PostFeedSectionSchema).max(3),
+				setLastViewMsInMs: z.number().optional(),
+			})
+			.optional(),
+	})
+	.optional();
+export type GetCallerContextAndThen = z.infer<typeof GetCallerContextAndThenSchema>;
 
 export let _getCallerContext = async (
 	ctx: Context,
@@ -44,6 +58,7 @@ export let _getCallerContext = async (
 		spaceMs?: number;
 	},
 	get: GetCallerContextGetArg,
+	andThen?: GetCallerContextAndThen, // TODO: _getCallerContext should return the subsequent call to be made so there isn't multiple API calls on page load
 ): Promise<CallerContext> => {
 	// console.log('get:', get);
 	// console.log('get', JSON.stringify(get, null, 2));

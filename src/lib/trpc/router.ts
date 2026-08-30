@@ -99,7 +99,7 @@ let makeProcedure = (
 let test = 0;
 let testLimiter = makeLimiter(3, 1 / 6);
 export let router = t.router({
-	test: makeProcedure(testLimiter).mutation(() => ({ test: ++test })),
+	test: makeProcedure(testLimiter).query(() => ({ test: ++test })),
 	scrape: makeProcedure()
 		.input(z.strictObject({ url: z.string().url() }).strict())
 		.mutation(async ({ input }) => {

@@ -24,7 +24,13 @@
 		if (!p.url) return {};
 
 		if (/\.(jpg|jpeg|png|webp|avif|gif|svg)(\?.*)?$/i.test(p.url)) return { imgSrc: p.url };
-		let urlObj = new URL(p.url);
+		let urlObj: URL;
+		try {
+			urlObj = new URL(p.url);
+		} catch (error) {
+			console.warn('invalid url:', p.url);
+			return {};
+		}
 		let pathnameSlugs = urlObj.pathname.split('/').slice(1);
 		let imgSrc = '';
 		let iframeSrc = '';

@@ -14,6 +14,7 @@
 	type InlineParagraphNode =
 		| { type: 'code'; content: string }
 		| { type: 'image'; alt: string; url: string }
+		| { type: 'namedLink'; content: string; url: string }
 		| { type: 'boldAndItalic'; content: string }
 		| { type: 'bold'; content: string }
 		| { type: 'italic'; content: string }
@@ -30,7 +31,9 @@
 	let headerStartRegex = /^(#{1,6}) ([^\n]*)/;
 	let bulletStartRegex = /^\* /;
 	let imageStartRegex = /^!\[([^\]]*)\]\(([^)\s]+)\)/;
+	let namedLinkStartRegex = /^\[([^\]]+)\]\(([^)\s]+)\)/;
 	let uriStartRegex = /^(https?:\/\/|file:\/\/|mailto:|tel:|sms:|geo:)\S+/;
+	let fullUriRegex = /^(https?:\/\/|file:\/\/|mailto:|tel:|sms:|geo:)\S+$/;
 
 	let isBoundaryChar = (char?: string) => char === undefined || /\s/.test(char);
 
@@ -133,6 +136,21 @@
 				continue;
 			}
 
+			// [label](url)
+			let namedLinkMatch = remaining.match(namedLinkStartRegex);
+			if (namedLinkMatch) {
+				flushText();
+				paragraphNodes.push({
+					type: 'namedLink',
+					content: namedLinkMatch[1],
+					url: namedLinkMatch[2],
+				});
+				i += namedLinkMatch[0].length;
+				prevChar = namedLinkMatch[0].at(-1)!;
+				atLineStart = false;
+				continue;
+			}
+
 			// 123_456_789
 			let citedPostMatch = remaining.match(citedPostStartRegex);
 			if (
@@ -230,11 +248,16 @@
 						class="font-mono text-sm bg-bg3 px-1">{node.content}</code
 					>{:else if node.type === 'boldAndItalic'}<strong><em>{node.content}</em></strong
 					>{:else if node.type === 'bold'}<strong>{node.content}</strong
-					>{:else if node.type === 'italic'}<em>{node.content}</em>{:else if node.type === 'link'}<a
-						target="_blank"
-						href={node.content}
-						class={linkClass}>{node.content}</a
-					><CoreWidget url={node.content} />{:else if node.type === 'image'}!({node.alt})[
+					>{:else if node.type === 'italic'}<em>{node.content}</em>{:else if node.type === 'link'}
+					<a target="_blank" href={node.content} class={linkClass}>{node.content}</a><CoreWidget
+						url={node.content}
+					/>{:else if node.type === 'namedLink'}[{#if fullUriRegex.test(node.content)}<a
+							target="_blank"
+							href={node.content}
+							class={linkClass}>{node.content}</a
+						>{:else}{node.content}{/if}](<a target="_blank" href={node.url} class={linkClass}
+						>{node.url}</a
+					>)<CoreWidget url={node.url} />{:else if node.type === 'image'}!({node.alt})[
 					<a target="_blank" href={node.url} class={linkClass}>{node.url}</a>]<CoreWidget
 						imageUrl={node.url}
 						alt={node.alt}
