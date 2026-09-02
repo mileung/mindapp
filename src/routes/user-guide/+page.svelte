@@ -4,6 +4,6 @@
 
 <div class="">
 	<p class="">{m.userGuide()}</p>
-	<a target="_blank" href="https://github.com/mileung/new-mindapp">{m.sourceCode()}</a>
+	<a target="_blank" href="https://github.com/mileung/mindapp">{m.sourceCode()}</a>
 </div>
 <a href="/privacy-policy">{m.privacyPolicy()}</a>

@@ -201,7 +201,7 @@
 			<a
 				target="_blank"
 				class="text-fg1 hover:text-fg3 underline decoration-hl1 hover:decoration-hl2"
-				href="https://github.com/search?q=repo%3Amileung%2Fnew-mindapp%20TODO&type=code"
+				href="https://github.com/search?q=repo%3Amileung%2Fmindapp%20TODO&type=code"
 			>
 				TODO
 			</a>

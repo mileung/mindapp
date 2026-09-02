@@ -11,6 +11,7 @@
 		main?: boolean;
 		noOverlay?: boolean;
 		evenBg?: boolean;
+		red?: boolean;
 	} = $props();
 
 	let urlId = $derived.by(() => {
@@ -28,6 +29,7 @@
 	);
 
 	let [lineColor, overlayColor] = $derived.by(() => {
+		if (p.red) return ['bg-red-500', moreOpaque ? 'bg-red-500/10' : 'bg-red-500/5'];
 		if (!p.postIdStr) return ['bg-hl2', moreOpaque ? 'bg-hl2/10' : 'bg-hl2/5'];
 		let post = gs.showReactionHistory || gs.writingReplyTo || gs.writingEditFor;
 		if (post && getIdStr(post) === p.postIdStr) {

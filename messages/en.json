@@ -192,6 +192,7 @@
 	"setFlair": "Set flair",
 	"canReact": "Can react",
 	"canPost": "Can post",
+	"cannotPostInThisSpace": "Cannot post in this space",
 	"continue": "Continue",
 	"accountDoesNotExist": "Account does not exist",
 	"oneTimePin": "One-time pin",

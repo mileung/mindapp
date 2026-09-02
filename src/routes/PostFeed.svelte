@@ -761,7 +761,7 @@
 				</a>
 			{:else if canPost}
 				<button
-					class="xy h-9 w-9 text-black bg-fg1 hover:bg-fg3 hover:border-hl2"
+					class="xy h-9 w-9 text-bg1 bg-fg1 hover:bg-fg3 hover:border-hl2"
 					onclick={() => (gs.writingNewPost = true)}
 				>
 					<IconPencilPlus class="h-7 w-7" />

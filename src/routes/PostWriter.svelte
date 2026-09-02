@@ -22,6 +22,7 @@
 		IconArrowUp,
 		IconCircleXFilled,
 		IconGripVertical,
+		IconHandStop,
 		IconMessage2Plus,
 		IconPencil,
 		IconPencilPlus,
@@ -52,10 +53,6 @@
 		() => (gs.writingReplyTo || gs.writingEditFor)?.in_ms ?? getUrlInMs(),
 	);
 	let postingInSpaceName = $derived(postingInMs === undefined ? '' : msToSpaceNameTxt(postingInMs));
-	let { canPost } = $derived(getSpacePermissions(postingInMs));
-	$effect(() => {
-		if (!canPost) gs.writingNewPost = gs.writingReplyTo = gs.writingEditFor = null;
-	});
 
 	let tagFilter = $derived(gs.writerTagVal.trim());
 	let savedTagsSet = $derived(getSavedTagsSet());
@@ -122,6 +119,7 @@
 		};
 	});
 
+	let { canPost } = $derived(getSpacePermissions(postingInMs));
 	let submit = () => {
 		if (!canPost) return;
 		let otherTag = (suggestingTags && suggestedTags[tagIndex]) || gs.writerTagVal.trim();
@@ -162,30 +160,41 @@
 	<div class="flex group bg-bg4 relative w-full">
 		<!-- TODO: save writer data so it persists after page refresh. If the post it's editing or linking to is not on the feed, open it in a modal? -->
 		{#if postingInMs !== undefined}
-			<button
-				class="flex-1 h-8 pl-2 fx gap-1 text-left text-nowrap overflow-scroll hover:bg-bg7 hover:text-fg3"
-				onmousedown={(e) => e.preventDefault()}
-				onclick={() => {
-					let post = gs.writingEditFor || gs.writingReplyTo;
-					if (post) {
-						let postIdStr = getIdStr(post);
-						scrollToHighlight(postIdStr, true);
-					}
-				}}
-			>
-				{#if gs.writingReplyTo}
-					<IconMessage2Plus class="w-5" />
-				{:else if gs.writingNewPost}
-					<IconPencilPlus class="w-5" />
-				{:else}
-					<IconPencil class="w-5" />
-				{/if}
-				<p class="">
-					{gs.writingReplyTo ? m.replyingIn() : gs.writingNewPost ? m.newPostIn() : m.editingIn()}
-				</p>
-				<SpaceIcon ms={postingInMs} class="h-5 w-5" />
-				<p class="flex-1">{postingInSpaceName}</p>
-			</button>
+			{#if canPost}
+				<button
+					class="flex-1 h-8 pl-2 fx gap-1 text-left text-nowrap overflow-scroll hover:bg-bg7 hover:text-fg3"
+					onmousedown={(e) => e.preventDefault()}
+					onclick={() => {
+						let post = gs.writingEditFor || gs.writingReplyTo;
+						if (post) {
+							let postIdStr = getIdStr(post);
+							scrollToHighlight(postIdStr, true);
+						}
+					}}
+				>
+					{#if gs.writingReplyTo}
+						<IconMessage2Plus class="w-5" />
+					{:else if gs.writingNewPost}
+						<IconPencilPlus class="w-5" />
+					{:else}
+						<IconPencil class="w-5" />
+					{/if}
+					<p class="">
+						{gs.writingReplyTo ? m.replyingIn() : gs.writingNewPost ? m.newPostIn() : m.editingIn()}
+					</p>
+					<SpaceIcon ms={postingInMs} class="h-5 w-5" />
+					<p class="flex-1">{postingInSpaceName}</p>
+				</button>
+			{:else}
+				<div
+					class="flex-1 h-8 pl-2 fx gap-1 text-left text-nowrap overflow-scroll hover:bg-bg7 hover:text-fg3"
+				>
+					<IconHandStop class="w-5" />
+					<p class="">
+						{m.cannotPostInThisSpace()}
+					</p>
+				</div>
+			{/if}
 		{/if}
 		<button
 			class="w-8 xy hover:bg-bg7 hover:text-fg3"
@@ -198,6 +207,7 @@
 		</button>
 		<Highlight
 			noScrollId
+			red={!canPost}
 			postIdStr={gs.writingReplyTo
 				? getIdStr(gs.writingReplyTo)
 				: gs.writingEditFor
