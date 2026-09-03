@@ -26,6 +26,11 @@ export let throwIf = (truthy: any) => {
 export let assertInputIsOwner = (i: { callerMs: number }) => throwIf(!inputIsOwner(i));
 
 export let isTouchScreen = browser ? 'ontouchstart' in window || !!navigator.maxTouchPoints : false;
+export let isIosOrIpadOs =
+	/iPad|iPhone|iPod/.test(navigator.platform) ||
+	(navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+export let linkClass =
+	'align-top inline-block max-w-[calc(100%-88px)] mini-x-scroll text-fg1 hover:text-fg3 underline decoration-hl1 hover:decoration-hl2';
 
 export let copyToClipboard = (text: string) => {
 	if (navigator?.clipboard?.writeText) {

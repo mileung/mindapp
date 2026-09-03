@@ -755,13 +755,13 @@
 					onclick={() => {
 						gs.lastScrollY && setTimeout(() => window.scrollTo({ top: gs.lastScrollY }), 1);
 					}}
-					class="xy h-9 w-9 bg-bg6 hover:bg-bg8 hover:text-fg3 hover:border-hl2"
+					class="xy h-9 w-9 bg-bg6 hover:bg-bg8 hover:text-fg3"
 				>
 					<IconX class="w-8" />
 				</a>
 			{:else if canPost}
 				<button
-					class="xy h-9 w-9 text-bg1 bg-fg1 hover:bg-fg3 hover:border-hl2"
+					class="xy h-9 w-9 text-bg1 bg-fg1 hover:bg-fg3"
 					onclick={() => (gs.writingNewPost = true)}
 				>
 					<IconPencilPlus class="h-7 w-7" />

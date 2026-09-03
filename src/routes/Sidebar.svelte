@@ -14,7 +14,7 @@
 		msToSpaceNameTxt,
 		resetBottomOverlay,
 	} from '$lib/global-state.svelte';
-	import { isTouchScreen } from '$lib/js';
+	import { isIosOrIpadOs, isTouchScreen } from '$lib/js';
 	import { m } from '$lib/paraglide/messages';
 	import { trpc } from '$lib/trpc/client';
 	import { signOut, unsaveAccount, updateLocalCache } from '$lib/types/local-cache';
@@ -45,7 +45,7 @@
 	let disableClickAfterDrag = $state(false);
 	let callerIsOwner = $derived(getCallerIsOwner());
 	let showAccountMenu = $state(false);
-	let hideExtensionLink = $state(isTouchScreen);
+	let hideExtensionLink = $state(isIosOrIpadOs);
 	let showSpaceMenu = $state(false);
 	let isEmbed = $derived(page.url.pathname.startsWith('/embed'));
 

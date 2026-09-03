@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { gs } from '$lib/global-state.svelte';
+	import { linkClass } from '$lib/js';
 	import { m } from '$lib/paraglide/messages';
 	import CitedPost from './CitedPost.svelte';
 	import CoreWidget from './CoreWidget.svelte';
@@ -213,8 +214,6 @@
 	};
 
 	let blocks = $derived(parseCore(p.core));
-	let linkClass =
-		'align-top inline-block max-w-[calc(100%-88px)] mini-x-scroll text-fg1 hover:text-fg3 underline decoration-hl1 hover:decoration-hl2';
 </script>
 
 {#each blocks as block}

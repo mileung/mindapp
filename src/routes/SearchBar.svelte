@@ -1,7 +1,12 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { gotoIfNeeded, textInputFocused } from '$lib/dom';
-	import { getSavedTagsSet, getSuggestedTags, gs } from '$lib/global-state.svelte';
+	import {
+		getSavedTagsSet,
+		getSpacePermissions,
+		getSuggestedTags,
+		gs,
+	} from '$lib/global-state.svelte';
 	import { getAlteredSearchParams, isTouchScreen } from '$lib/js';
 	import { m } from '$lib/paraglide/messages';
 	import { updateSavedTags } from '$lib/types/local-cache';
@@ -18,6 +23,7 @@
 	let trimmedSearchVal = $derived(searchVal.trim());
 
 	let urlInMs = $derived(getUrlInMs());
+	let { canPost } = $derived(getSpacePermissions(urlInMs));
 	let searchUrl = $derived(
 		getAlteredSearchParams(
 			{
@@ -156,7 +162,7 @@
 		bind:this={searchIpt}
 		bind:value={searchVal}
 		enterkeyhint="search"
-		class="font-mono flex-1 px-2 bg-bg3 hover:bg-bg5"
+		class="font-mono h-9 flex-1 pl-2 pr-9 bg-bg3 hover:bg-bg5"
 		placeholder={m.search()}
 		onfocus={() => {
 			searchIptFocused = true;
@@ -209,12 +215,35 @@
 			}
 		}}
 	/>
-	<a
-		class={`xy -ml-9 w-9 group ${trimmedSearchVal ? 'text-fg1 hover:text-fg3' : 'text-fg2 pointer-events-none'}`}
-		href={searchUrl}
-	>
-		<div class={`xy ${searchIptFocused ? 'h-8 w-8' : 'h-9 w-9'} group-hover:bg-bg6`}>
-			<IconSearch class="h-6 w-6" />
-		</div>
-	</a>
+	{#if searchIptFocused}
+		{#if trimmedSearchVal}
+			<button
+				class={`xy -ml-9 w-9 group ${trimmedSearchVal ? 'text-fg1 hover:text-fg3' : 'text-fg2 pointer-events-none'}`}
+				onmousedown={(e) => e.preventDefault()}
+				onclick={() => (searchVal = '')}
+			>
+				<div class={`xy ${searchIptFocused ? 'h-8 w-8' : 'h-9 w-9'} group-hover:bg-bg6`}>
+					<IconX class="h-6 w-6" />
+				</div>
+			</button>
+		{/if}
+	{:else}
+		<a
+			class={`xy -ml-9 w-9 group ${trimmedSearchVal ? 'text-fg1 hover:text-fg3' : 'text-fg2 pointer-events-none'}`}
+			href={searchUrl}
+		>
+			<div class={`xy ${searchIptFocused ? 'h-8 w-8' : 'h-9 w-9'} group-hover:bg-bg6`}>
+				<IconSearch class="h-6 w-6" />
+			</div>
+		</a>
+	{/if}
 </div>
+{#if searchIptFocused && trimmedSearchVal}
+	<a
+		href={searchUrl}
+		onmousedown={(e) => e.preventDefault()}
+		class={`z-50 xy h-9 w-9 text-bg1 bg-fg1 hover:bg-fg3 ${canPost ? '-mr-9' : ''}`}
+	>
+		<IconSearch class="h-6 w-6" />
+	</a>
+{/if}
