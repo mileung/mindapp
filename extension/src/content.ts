@@ -36,21 +36,17 @@ if (
 
 window.addEventListener('keydown', (e) => {
 	let baseUrl = '';
-	if (e.key === 'µ') {
-		// alt m
+	if (e.altKey && e.code === 'KeyM') {
 		baseUrl = newMindappUrl;
-	} else if (e.key === '∂') {
-		// alt d
+	} else if (e.altKey && e.code === 'KeyD') {
 		baseUrl = newMindappDevUrl;
-	} else if (e.key === 'π') {
-		// alt p
+	} else if (e.altKey && e.code === 'KeyP') {
 		baseUrl = newMindappPreviewUrl;
-	} else if (e.key === '©') {
-		// alt g
+	} else if (e.altKey && e.code === 'KeyG') {
 		baseUrl = oldMindappDevUrl;
 	}
 	if (baseUrl && !['INPUT', 'TEXTAREA'].includes(document.activeElement!.tagName)) {
-		openPopup(baseUrl, e.key !== '©');
+		openPopup(baseUrl, e.code !== 'KeyG');
 	}
 });
 

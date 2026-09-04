@@ -1,5 +1,6 @@
 <script lang="ts">
 	import {
+		assertCallerIsOwnerOrInGlobal,
 		getCallerIsOwner,
 		getSpaceContext,
 		getWhoObj,
@@ -124,25 +125,28 @@
 				<button
 					class="relative xy pl-0.5 pr-1 border-b-2 border-hl1 hover:border-hl2 bg-bg2 hover:bg-bg4 hover:text-fg3"
 					onclick={async () => {
-						editing = false;
-						let changes: Changes = {};
-						if (draftSettings.nameTxt.trim() !== currentSettings.nameTxt)
-							changes.nameTxt = draftSettings.nameTxt.trim();
-						if (draftSettings.bioOrDescriptionTxt.trim() !== currentSettings.bioOrDescriptionTxt) {
-							if (p.account) changes.bioTxt = draftSettings.bioOrDescriptionTxt.trim();
-							else changes.descriptionTxt = draftSettings.bioOrDescriptionTxt.trim();
-						}
-						if (draftSettings.pinnedQueryTxt !== currentSettings.pinnedQueryTxt)
-							changes.pinnedQueryTxt = draftSettings.pinnedQueryTxt.trim();
-						if (draftSettings.isPublicNum !== currentSettings.isPublicNum)
-							changes.isPublicNum = draftSettings.isPublicNum;
-						if (
-							draftSettings.newMemberPermissionCodeNum !==
-							currentSettings.newMemberPermissionCodeNum
-						)
-							changes.newMemberPermissionCodeNum = draftSettings.newMemberPermissionCodeNum;
-						if (Object.keys(changes).length) {
-							try {
+						try {
+							assertCallerIsOwnerOrInGlobal();
+							editing = false;
+							let changes: Changes = {};
+							if (draftSettings.nameTxt.trim() !== currentSettings.nameTxt)
+								changes.nameTxt = draftSettings.nameTxt.trim();
+							if (
+								draftSettings.bioOrDescriptionTxt.trim() !== currentSettings.bioOrDescriptionTxt
+							) {
+								if (p.account) changes.bioTxt = draftSettings.bioOrDescriptionTxt.trim();
+								else changes.descriptionTxt = draftSettings.bioOrDescriptionTxt.trim();
+							}
+							if (draftSettings.pinnedQueryTxt !== currentSettings.pinnedQueryTxt)
+								changes.pinnedQueryTxt = draftSettings.pinnedQueryTxt.trim();
+							if (draftSettings.isPublicNum !== currentSettings.isPublicNum)
+								changes.isPublicNum = draftSettings.isPublicNum;
+							if (
+								draftSettings.newMemberPermissionCodeNum !==
+								currentSettings.newMemberPermissionCodeNum
+							)
+								changes.newMemberPermissionCodeNum = draftSettings.newMemberPermissionCodeNum;
+							if (Object.keys(changes).length) {
 								let update = (ms: number) =>
 									updateLocalCache((lc) => {
 										if (p.account) {
@@ -213,9 +217,9 @@
 											).ms
 										: 0;
 								update(newMs);
-							} catch (error) {
-								alertError(error);
 							}
+						} catch (error) {
+							alertError(error);
 						}
 					}}
 				>

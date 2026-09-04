@@ -748,7 +748,7 @@
 						<div class="flex flex-wrap text-sm">
 							{#each tags as tag (tag)}
 								<a
-									href={`/${p.post.in_ms}__?q=${`[${tag}]`}`}
+									href={`/${p.post.in_ms}__?q=${encodeURIComponent(`[${tag}]`)}`}
 									class={`h-6 pb-1 xy whitespace-pre text-fg2 px-1 hover:text-fg1 ${evenBg ? 'hover:bg-bg4' : 'hover:bg-bg5'}`}
 								>
 									{tag}

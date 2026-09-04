@@ -1,7 +1,7 @@
 {
 	"manifest_version": 3,
 	"name": "Mindapp",
-	"version": "2026.06.28",
+	"version": "2026.09.03",
 	"icons": { "1024": "mindapp-logo.png" },
 	"description": "Mindapp is a tool for saving, organizing, and sharing things. Press `Alt m`, right click, or click the pinned icon to begin.",
 	"permissions": ["contextMenus"],

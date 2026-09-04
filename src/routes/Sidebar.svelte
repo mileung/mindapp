@@ -117,7 +117,7 @@
 					else window.scrollTo({ top: 0 });
 				}
 			} else if (
-				e.metaKey &&
+				(e.altKey || e.metaKey) &&
 				e.ctrlKey &&
 				(e.key === 'ArrowUp' || e.key === 'ArrowDown') &&
 				gs.accounts
