@@ -174,23 +174,15 @@ export let _getPostFeed = async (
 					.from(pTable)
 					.where(
 						or(
-							anySectionHasTags
-								? and(
-										pf.code.eq(pc._tag_imBy8_count),
-										or(...viewableSpaceMss.map((ms) => pf.p1.eq(ms))),
-										or(...allSectionTags.map((t) => pf.txt.eq(t))),
-										or(
-											...allSectionTagStarts.map((t) =>
-												pf.txt.likeEscaped(`${escapeLikePattern(t)}%`),
-											),
-										),
-										or(
-											...allSectionTagEnds.map((t) =>
-												pf.txt.likeEscaped(`%${escapeLikePattern(t)}`),
-											),
-										),
-									)
-								: undefined,
+							and(
+								pf.code.eq(pc._tag_imBy8_count),
+								or(...viewableSpaceMss.map((ms) => pf.p1.eq(ms))),
+								or(...allSectionTags.map((t) => pf.txt.eq(t))),
+								or(
+									...allSectionTagStarts.map((t) => pf.txt.likeEscaped(`${escapeLikePattern(t)}%`)),
+								),
+								or(...allSectionTagEnds.map((t) => pf.txt.likeEscaped(`%${escapeLikePattern(t)}`))),
+							),
 						),
 					)
 			: [],
