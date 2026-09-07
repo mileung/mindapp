@@ -1,3 +1,4 @@
+/*
 import { getWhoObj, gsdb } from '$lib/global-state.svelte';
 import { throwIf } from '$lib/js';
 import { trpc } from '$lib/trpc/client';
@@ -1070,3 +1071,1098 @@ let escapeLikePattern = (input: string) =>
 		.replace(/\\/g, '\\\\') // escape existing backslashes first
 		.replace(/%/g, '\\%') // escape %
 		.replace(/_/g, '\\_'); // escape _
+
+// TODO: getPostFeed needs more tweaking...
+// This query
+// [Documentary]! [youtube.com]
+// gets more results than this query
+// [Documentary] [youtube.com]!
+// cuz if [youtube.com] is required, the algo will iterate through all those first
+// and if there are not enough posts with [Documentary] in that first iteration
+// to cause a paginated, all the potential [Documentary] post after that first
+// iteration are not iterated over
+*/
+
+// Below is AI code. Idk how it works.
+
+import { getWhoObj, gsdb } from '$lib/global-state.svelte';
+import { trpc } from '$lib/trpc/client';
+import { and, or, sql } from 'drizzle-orm';
+import type { SQLiteColumn } from 'drizzle-orm/sqlite-core';
+import { z } from 'zod';
+import { getCitedPostIds } from '.';
+import { type Database } from '../../local-db';
+import { channelPartsByCode, WhoObjSchema, type PartSelect } from '../parts';
+import { pc } from '../parts/partCodes';
+import { pf } from '../parts/partFilters';
+import { getIdStr, getIdStrAsIdObj, IdObjSchema, type IdObj } from '../parts/partIds';
+import { pTable } from '../parts/partsTable';
+import { accentCodes } from '../spaces';
+import {
+	getDefaultParsedQ,
+	getParsedQPaginates,
+	maxTopLvlPostLimitPerSection,
+	ParsedQSchema,
+} from './parseSearchQuery';
+
+// =============================================================================
+// SQLite/libSQL expression-tree depth safety
+// =============================================================================
+// SQLite parses `or(a, b, c, ..., z)` / `and(...)` as a LEFT-ASSOCIATIVE
+// binary expression tree - a flat chain of N conditions therefore has
+// parse-tree depth proportional to N, not O(1). Exceeding the engine's max
+// expression depth throws at query time. Every query in this file is kept
+// under a total depth budget of 100 by:
+//   1. Capping any single or()/and() built from a variable-length array at
+//      maxOrChainWidth, splitting longer arrays into parallel queries merged
+//      in JS (runChunked) - this guarantees depth-safety regardless of how
+//      large the array grows.
+//   2. Using SQLite row-value IN, `(a,b,c) IN ((1,2,3), (4,5,6), ...)`, for
+//      composite-key ("this exact post") lookups instead of OR-ing per-row
+//      AND conditions. A row-value IN list compiles to ONE flat node, not a
+//      chain, so its depth is O(1) regardless of list length.
+//   3. Capping free-form arrays at the schema level (see parseSearchQuery.ts)
+//      so the guarantee holds independent of chunking logic ever having a bug.
+
+let maxOrChainWidth = 40;
+
+let chunkArr = <T>(arr: T[], size: number): T[][] => {
+	let chunks: T[][] = [];
+	for (let i = 0; i < arr.length; i += size) chunks.push(arr.slice(i, i + size));
+	return chunks;
+};
+
+let runChunked = async <T, R>(items: T[], queryFn: (chunk: T[]) => Promise<R[]>): Promise<R[]> => {
+	if (!items.length) return [];
+	let results = await Promise.all(chunkArr(items, maxOrChainWidth).map(queryFn));
+	return results.flat();
+};
+
+let tupleIn = (cols: [SQLiteColumn, SQLiteColumn, SQLiteColumn], idObjs: IdObj[]) =>
+	sql`(${cols[0]}, ${cols[1]}, ${cols[2]}) in (${sql.join(
+		idObjs.map((o) => sql`(${o.in_ms}, ${o.ms}, ${o.by_ms})`),
+		sql`, `,
+	)})`;
+
+let tupleNotIn = (cols: [SQLiteColumn, SQLiteColumn, SQLiteColumn], idObjs: IdObj[]) =>
+	sql`(${cols[0]}, ${cols[1]}, ${cols[2]}) not in (${sql.join(
+		idObjs.map((o) => sql`(${o.in_ms}, ${o.ms}, ${o.by_ms})`),
+		sql`, `,
+	)})`;
+
+let escapeLikePattern = (input: string) =>
+	input.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+
+// =============================================================================
+// Schemas
+// =============================================================================
+
+export let PostFeedSectionSchema = ParsedQSchema.extend({
+	flatView: z.boolean(),
+	newFirst: z.boolean(),
+	msGte: z.number().optional(),
+	msLte: z.number().optional(),
+	// Was uncapped before - a deeply nested/viral thread could produce an
+	// unbounded exclude list. Capped for the same depth-safety reasoning as
+	// everything else here.
+	postIdObjsExclude: z.array(IdObjSchema).max(888),
+	topLvlPostLimit: z.number().gt(0).lte(maxTopLvlPostLimitPerSection),
+});
+export type PostFeedSection = z.infer<typeof PostFeedSectionSchema>;
+
+export let getDefaultSection = (): PostFeedSection => ({
+	...getDefaultParsedQ(),
+	flatView: true,
+	newFirst: true,
+	msGte: undefined,
+	msLte: undefined,
+	postIdObjsExclude: [],
+	topLvlPostLimit: maxTopLvlPostLimitPerSection,
+});
+
+export let GetPostFeedInputSchema = WhoObjSchema.extend({
+	sections: z.array(PostFeedSectionSchema).max(3),
+	setLastViewMsInMs: z.number().optional(),
+}).strict();
+export type GetPostFeedInput = z.infer<typeof GetPostFeedInputSchema>;
+
+export let FeedHistoryLayerSchema = z.object({
+	ms: z.number(),
+	tags: z.array(z.string()),
+	core: z.string(),
+});
+
+// Deliberately looser than the `PostSchema` used for submitting/editing
+// posts: a feed row normally carries only whichever single version was
+// actually fetched, not the full 1..N history chain, so this does not
+// require every version key to be present.
+export let FeedPostSchema = z.object({
+	ms: z.number(),
+	by_ms: z.number(),
+	in_ms: z.number(),
+	at_ms: z.number().optional(),
+	at_by_ms: z.number().optional(),
+	childCount: z.number().optional(),
+	myRxnEmojis: z.array(z.string()).optional(),
+	rxnEmojiCount: z.record(z.string(), z.number()).optional(),
+	history: z.record(z.string(), FeedHistoryLayerSchema).nullable(),
+});
+export type FeedPost = z.infer<typeof FeedPostSchema>;
+
+export let MembershipSummarySchema = z.object({
+	roleCode: z.object({ num: z.number() }).optional(),
+	flair: z.object({ txt: z.string() }).optional(),
+});
+
+export let GetPostFeedOutputSchema = z
+	.object({
+		topLvlPostIdStrsSections: z.array(z.array(z.string())).optional(),
+		idToPostMap: z.record(z.string(), FeedPostSchema).optional(),
+		msToAccountNameTxtMap: z.record(z.string(), z.string()).optional(),
+		msToSpaceNameTxtMap: z.record(z.string(), z.string()).optional(),
+		spaceMsToAccountMsToMembershipMap: z
+			.record(z.string(), z.record(z.string(), MembershipSummarySchema))
+			.optional(),
+		// Only ever true if a section's true candidate pool was so large that
+		// the defensive iteration cap (maxLoopsPerSection) was hit before the
+		// section could be proven exhausted. Should not occur in normal usage.
+		truncatedSectionIndexes: z.array(z.number()).optional(),
+	})
+	.strict();
+export type GetPostFeedOutput = z.infer<typeof GetPostFeedOutputSchema>;
+
+// =============================================================================
+// Tag-constraint resolution
+// =============================================================================
+
+type TagRow = PartSelect;
+
+type TagConstraint = {
+	rows: TagRow[];
+	totalCount: number;
+};
+
+let buildConstraint = (rows: TagRow[]): TagConstraint => ({
+	rows,
+	totalCount: rows.reduce((sum, r) => sum + (r.p4 ?? 0), 0),
+});
+
+let fetchTagRows = async (
+	db: Database,
+	spaceMss: number[],
+	exactTexts: string[],
+	startPatterns: string[],
+	endPatterns: string[],
+): Promise<TagRow[]> => {
+	if (!spaceMss.length || (!exactTexts.length && !startPatterns.length && !endPatterns.length))
+		return [];
+	return runChunked(spaceMss, (spaceChunk) =>
+		db
+			.select()
+			.from(pTable)
+			.where(
+				and(
+					pf.code.eq(pc._tag_imBy8_count),
+					pf.p1.in(spaceChunk),
+					or(
+						exactTexts.length ? pf.txt.in(exactTexts) : undefined,
+						...startPatterns.map((s) => pf.txt.likeEscaped(`${escapeLikePattern(s)}%`)),
+						...endPatterns.map((s) => pf.txt.likeEscaped(`%${escapeLikePattern(s)}`)),
+					),
+				),
+			),
+	);
+};
+
+// =============================================================================
+// Per-section resolution
+// =============================================================================
+
+type SectionCheckedRows = {
+	ancestryByKey: Map<string, TagRow>;
+};
+
+let paginateByTagRows = async (p: {
+	db: Database;
+	drivingRows: TagRow[];
+	bound: number;
+	newFirst: boolean;
+	msGte?: number;
+	msLte?: number;
+	excludeIdObjs: IdObj[];
+	needed: number;
+	flatView: boolean;
+	otherRequiredConstraints: TagConstraint[];
+	// only set when the driving pool is NOT already the either-group itself
+	eitherConstraints?: TagConstraint[];
+	eitherByMss: number[];
+	eitherAtByMss: number[];
+	requiredCoreIncludes: string[];
+	eitherCoreIncludes: string[];
+}): Promise<
+	{ confirmedTopLvlIdObjs: IdObj[]; exhausted: boolean; truncated: boolean } & SectionCheckedRows
+> => {
+	let rowsConsumed = 0;
+	let confirmedTopLvlIdObjs: IdObj[] = [];
+	let seenTopLvlKeys = new Set<string>();
+	let excludeIdObjs = p.excludeIdObjs;
+	let cursorMsGte = p.msGte;
+	let cursorMsLte = p.msLte;
+	let loops = 0;
+	let truncated = false;
+	let maxLoopsPerSection = 500;
+	let ancestryByKey = new Map<string, TagRow>();
+
+	let drivingIdentities = p.drivingRows.map((r) => ({ in_ms: r.p1!, ms: r.p2!, by_ms: r.p3! }));
+
+	while (confirmedTopLvlIdObjs.length < p.needed && rowsConsumed < p.bound) {
+		if (++loops > maxLoopsPerSection) {
+			console.warn('getPostFeed: hit maxLoopsPerSection safety cap');
+			truncated = true;
+			break;
+		}
+		let batchLimit = Math.min(200, p.bound - rowsConsumed);
+
+		let page = await runChunked(drivingIdentities, (idChunk) =>
+			p.db
+				.select()
+				.from(pTable)
+				.where(
+					and(
+						pf.code.eq(pc.tagImb_postMb_lastVersion),
+						tupleIn([pTable.p1, pTable.p2, pTable.p3], idChunk),
+						cursorMsGte === undefined ? undefined : pf.p4.gte(cursorMsGte),
+						cursorMsLte === undefined ? undefined : pf.p4.lte(cursorMsLte),
+						excludeIdObjs.length
+							? tupleNotIn([pTable.p1, pTable.p4, pTable.p5], excludeIdObjs)
+							: undefined,
+					),
+				)
+				.orderBy(p.newFirst ? pf.p4.desc : pf.p4.asc)
+				.limit(batchLimit),
+		);
+		page.sort((a, b) => (p.newFirst ? b.p4! - a.p4! : a.p4! - b.p4!));
+		page = page.slice(0, batchLimit);
+		if (!page.length) break;
+
+		rowsConsumed += page.length;
+		let pageMss = page.map((r) => r.p4!);
+		if (p.newFirst) cursorMsLte = Math.min(...pageMss);
+		else cursorMsGte = Math.max(...pageMss);
+		excludeIdObjs = [
+			...excludeIdObjs,
+			...page.map((r) => ({ in_ms: r.p1!, ms: r.p4!, by_ms: r.p5! })),
+		];
+
+		let candidateMap = new Map<string, IdObj>();
+		for (let r of page) {
+			let o = { in_ms: r.p1!, ms: r.p4!, by_ms: r.p5! };
+			candidateMap.set(getIdStr(o), o);
+		}
+		let candidates = [...candidateMap.values()];
+
+		// Author filter - already have by_ms on hand, no query needed.
+		if (p.eitherByMss.length) {
+			let allowed = new Set(p.eitherByMss);
+			candidates = candidates.filter((o) => allowed.has(o.by_ms));
+		}
+
+		// Any other required-tag constraints (AND) not already guaranteed by
+		// the driving pool itself.
+		for (let constraint of p.otherRequiredConstraints) {
+			if (!candidates.length) break;
+			let rowIds = constraint.rows.map((r) => ({ in_ms: r.p1!, ms: r.p2!, by_ms: r.p3! }));
+			let joinRows = rowIds.length
+				? await runChunked(candidates, (candChunk) =>
+						p.db
+							.select()
+							.from(pTable)
+							.where(
+								and(
+									pf.code.eq(pc.tagImb_postMb_lastVersion),
+									tupleIn([pTable.p1, pTable.p4, pTable.p5], candChunk),
+									tupleIn([pTable.p1, pTable.p2, pTable.p3], rowIds),
+								),
+							),
+					)
+				: [];
+			let satisfied = new Set(
+				joinRows.map((r) => getIdStr({ in_ms: r.p1!, ms: r.p4!, by_ms: r.p5! })),
+			);
+			candidates = candidates.filter((o) => satisfied.has(getIdStr(o)));
+		}
+
+		// Either-tag group check - only needed when the driving pool was NOT
+		// itself derived from this either-group (in which case membership is
+		// already guaranteed by construction).
+		if (p.eitherConstraints?.length && candidates.length) {
+			let rowIds = p.eitherConstraints.flatMap((c) =>
+				c.rows.map((r) => ({ in_ms: r.p1!, ms: r.p2!, by_ms: r.p3! })),
+			);
+			let joinRows = rowIds.length
+				? await runChunked(candidates, (candChunk) =>
+						p.db
+							.select()
+							.from(pTable)
+							.where(
+								and(
+									pf.code.eq(pc.tagImb_postMb_lastVersion),
+									tupleIn([pTable.p1, pTable.p4, pTable.p5], candChunk),
+									tupleIn([pTable.p1, pTable.p2, pTable.p3], rowIds),
+								),
+							),
+					)
+				: [];
+			let satisfied = new Set(
+				joinRows.map((r) => getIdStr({ in_ms: r.p1!, ms: r.p4!, by_ms: r.p5! })),
+			);
+			candidates = candidates.filter((o) => satisfied.has(getIdStr(o)));
+		}
+
+		// Ancestry - needed regardless (childCount/parent/root for output +
+		// nested-view root resolution), and it's how "reply-to-author" is
+		// filtered too, since a post's own row already stores its parent's
+		// author (p5), no join required.
+		let ancestryRows = candidates.length
+			? await runChunked(candidates, (c) =>
+					p.db
+						.select()
+						.from(pTable)
+						.where(
+							and(
+								pf.code.eq(pc.postImb_parentMb_rootMb_childCount),
+								tupleIn([pTable.p1, pTable.p2, pTable.p3], c),
+							),
+						),
+				)
+			: [];
+		for (let r of ancestryRows)
+			ancestryByKey.set(getIdStr({ in_ms: r.p1!, ms: r.p2!, by_ms: r.p3! }), r);
+
+		if (p.eitherAtByMss.length) {
+			candidates = candidates.filter((o) => {
+				let a = ancestryByKey.get(getIdStr(o));
+				return a && a.p5 !== null && a.p5 !== undefined && p.eitherAtByMss.includes(a.p5);
+			});
+		}
+
+		// Core text filter.
+		if ((p.requiredCoreIncludes.length || p.eitherCoreIncludes.length) && candidates.length) {
+			let coreRows = await runChunked(candidates, (c) =>
+				p.db
+					.select()
+					.from(pTable)
+					.where(
+						and(
+							pf.code.eq(pc._core_postImb_lastVersion_m),
+							tupleIn([pTable.p1, pTable.p2, pTable.p3], c),
+							...p.requiredCoreIncludes.map((s) => pf.txt.likeEscaped(`%${escapeLikePattern(s)}%`)),
+							p.eitherCoreIncludes.length
+								? or(
+										...p.eitherCoreIncludes.map((s) =>
+											pf.txt.likeEscaped(`%${escapeLikePattern(s)}%`),
+										),
+									)
+								: undefined,
+						),
+					),
+			);
+			let satisfied = new Set(
+				coreRows.map((r) => getIdStr({ in_ms: r.p1!, ms: r.p2!, by_ms: r.p3! })),
+			);
+			candidates = candidates.filter((o) => satisfied.has(getIdStr(o)));
+		}
+
+		for (let o of candidates) {
+			let key: string;
+			if (p.flatView) key = getIdStr(o);
+			else {
+				let a = ancestryByKey.get(getIdStr(o));
+				key =
+					a && a.p6 !== null && a.p6 !== undefined
+						? getIdStr({ in_ms: a.p1!, ms: a.p6!, by_ms: a.p7! })
+						: getIdStr(o);
+			}
+			if (seenTopLvlKeys.has(key)) continue;
+			seenTopLvlKeys.add(key);
+			confirmedTopLvlIdObjs.push(getIdStrAsIdObj(key));
+			if (confirmedTopLvlIdObjs.length >= p.needed) break;
+		}
+	}
+
+	return {
+		confirmedTopLvlIdObjs,
+		exhausted: rowsConsumed >= p.bound,
+		truncated,
+		ancestryByKey,
+	};
+};
+
+// Fallback for sections with no tag constraints at all (pure core-text
+// search, or pure space/author/id/time filter). Gets an exact bound via
+// COUNT(*) up front, same termination guarantee as the tag-driven path.
+let paginateWithoutTags = async (p: {
+	db: Database;
+	allowedSpaceMss: number[];
+	newFirst: boolean;
+	msGte?: number;
+	msLte?: number;
+	excludeIdObjs: IdObj[];
+	needed: number;
+	flatView: boolean;
+	eitherByMss: number[];
+	eitherAtByMss: number[];
+	requiredCoreIncludes: string[];
+	eitherCoreIncludes: string[];
+}): Promise<
+	{ confirmedTopLvlIdObjs: IdObj[]; exhausted: boolean; truncated: boolean } & SectionCheckedRows
+> => {
+	let hasCore = p.requiredCoreIncludes.length || p.eitherCoreIncludes.length;
+	let code = hasCore ? pc._core_postImb_lastVersion_m : pc.postImb_parentMb_rootMb_childCount;
+	let msCol = hasCore ? pf.p2 : pf.p2;
+
+	let buildFilters = (msGte?: number, msLte?: number, excludeIdObjs: IdObj[] = []) =>
+		and(
+			pf.code.eq(code),
+			pf.p1.in(p.allowedSpaceMss),
+			msGte === undefined ? undefined : msCol.gte(msGte),
+			msLte === undefined ? undefined : msCol.lte(msLte),
+			p.eitherByMss.length ? pf.p3.in(p.eitherByMss) : undefined,
+			excludeIdObjs.length
+				? tupleNotIn([pTable.p1, pTable.p2, pTable.p3], excludeIdObjs)
+				: undefined,
+			...p.requiredCoreIncludes.map((s) => pf.txt.likeEscaped(`%${escapeLikePattern(s)}%`)),
+			p.eitherCoreIncludes.length
+				? or(...p.eitherCoreIncludes.map((s) => pf.txt.likeEscaped(`%${escapeLikePattern(s)}%`)))
+				: undefined,
+		);
+
+	// @ts-ignore
+	let [{ total }] = await p.db
+		// @ts-ignore
+		.select({ total: sql<number>`count(*)` })
+		.from(pTable)
+		.where(buildFilters(p.msGte, p.msLte, p.excludeIdObjs));
+	let bound = total;
+
+	let rowsConsumed = 0;
+	let confirmedTopLvlIdObjs: IdObj[] = [];
+	let seenTopLvlKeys = new Set<string>();
+	let excludeIdObjs = p.excludeIdObjs;
+	let cursorMsGte = p.msGte;
+	let cursorMsLte = p.msLte;
+	let loops = 0;
+	let truncated = false;
+	let maxLoopsPerSection = 500;
+	let ancestryByKey = new Map<string, TagRow>();
+
+	while (confirmedTopLvlIdObjs.length < p.needed && rowsConsumed < bound) {
+		if (++loops > maxLoopsPerSection) {
+			console.warn('getPostFeed: hit maxLoopsPerSection safety cap');
+			truncated = true;
+			break;
+		}
+		let batchLimit = Math.min(200, bound - rowsConsumed);
+		let page = await p.db
+			.select()
+			.from(pTable)
+			.where(buildFilters(cursorMsGte, cursorMsLte, excludeIdObjs))
+			.orderBy(p.newFirst ? msCol.desc : msCol.asc)
+			.limit(batchLimit);
+		if (!page.length) break;
+
+		rowsConsumed += page.length;
+		let pageMss = page.map((r) => r.p2!);
+		if (p.newFirst) cursorMsLte = Math.min(...pageMss);
+		else cursorMsGte = Math.max(...pageMss);
+		excludeIdObjs = [
+			...excludeIdObjs,
+			...page.map((r) => ({ in_ms: r.p1!, ms: r.p2!, by_ms: r.p3! })),
+		];
+
+		let candidates = page.map((r) => ({ in_ms: r.p1!, ms: r.p2!, by_ms: r.p3! }));
+
+		let ancestryRows = hasCore
+			? await runChunked(candidates, (c) =>
+					p.db
+						.select()
+						.from(pTable)
+						.where(
+							and(
+								pf.code.eq(pc.postImb_parentMb_rootMb_childCount),
+								tupleIn([pTable.p1, pTable.p2, pTable.p3], c),
+							),
+						),
+				)
+			: page;
+		for (let r of ancestryRows)
+			ancestryByKey.set(getIdStr({ in_ms: r.p1!, ms: r.p2!, by_ms: r.p3! }), r);
+
+		if (p.eitherAtByMss.length) {
+			candidates = candidates.filter((o) => {
+				let a = ancestryByKey.get(getIdStr(o));
+				return a && a.p5 !== null && a.p5 !== undefined && p.eitherAtByMss.includes(a.p5);
+			});
+		}
+
+		for (let o of candidates) {
+			let key: string;
+			if (p.flatView) key = getIdStr(o);
+			else {
+				let a = ancestryByKey.get(getIdStr(o));
+				key =
+					a && a.p6 !== null && a.p6 !== undefined
+						? getIdStr({ in_ms: a.p1!, ms: a.p6!, by_ms: a.p7! })
+						: getIdStr(o);
+			}
+			if (seenTopLvlKeys.has(key)) continue;
+			seenTopLvlKeys.add(key);
+			confirmedTopLvlIdObjs.push(getIdStrAsIdObj(key));
+			if (confirmedTopLvlIdObjs.length >= p.needed) break;
+		}
+	}
+
+	return { confirmedTopLvlIdObjs, exhausted: rowsConsumed >= bound, truncated, ancestryByKey };
+};
+
+let resolveSection = async (
+	db: Database,
+	section: PostFeedSection,
+	allowedSpaceMss: number[],
+): Promise<{ topLvlIdObjs: IdObj[]; truncated: boolean }> => {
+	let needed = section.topLvlPostLimit;
+	let topLvlIdObjs: IdObj[] = [];
+	let truncated = false;
+
+	// Direct-by-id includes are resolved first and consume part of the limit,
+	// same contract as the original implementation.
+	if (section.postIdObjsInclude.length) {
+		let rows = await runChunked(section.postIdObjsInclude, (chunk) =>
+			db
+				.select()
+				.from(pTable)
+				.where(
+					and(
+						pf.code.eq(pc.postImb_parentMb_rootMb_childCount),
+						pf.p1.in(allowedSpaceMss),
+						tupleIn([pTable.p1, pTable.p2, pTable.p3], chunk),
+					),
+				),
+		);
+		for (let r of rows.slice(0, needed))
+			topLvlIdObjs.push({ in_ms: r.p1!, ms: r.p2!, by_ms: r.p3! });
+	}
+	needed -= topLvlIdObjs.length;
+	if (needed <= 0 || !getParsedQPaginates(section)) return { topLvlIdObjs, truncated };
+
+	let hasRequiredTags =
+		section.requiredTags.length ||
+		section.requiredTagStarts.length ||
+		section.requiredTagEnds.length;
+	let hasEitherTags =
+		section.eitherTags.length || section.eitherTagStarts.length || section.eitherTagEnds.length;
+
+	if (hasRequiredTags || hasEitherTags) {
+		let allTagRows = await fetchTagRows(
+			db,
+			allowedSpaceMss,
+			[...section.requiredTags, ...section.eitherTags],
+			[...section.requiredTagStarts, ...section.eitherTagStarts],
+			[...section.requiredTagEnds, ...section.eitherTagEnds],
+		);
+
+		let requiredConstraints = [
+			...section.requiredTags.map((t) => buildConstraint(allTagRows.filter((r) => r.txt === t))),
+			...section.requiredTagStarts.map((t) =>
+				buildConstraint(allTagRows.filter((r) => r.txt!.startsWith(t))),
+			),
+			...section.requiredTagEnds.map((t) =>
+				buildConstraint(allTagRows.filter((r) => r.txt!.endsWith(t))),
+			),
+		];
+		let eitherConstraints = [
+			...section.eitherTags.map((t) => buildConstraint(allTagRows.filter((r) => r.txt === t))),
+			...section.eitherTagStarts.map((t) =>
+				buildConstraint(allTagRows.filter((r) => r.txt!.startsWith(t))),
+			),
+			...section.eitherTagEnds.map((t) =>
+				buildConstraint(allTagRows.filter((r) => r.txt!.endsWith(t))),
+			),
+		];
+
+		// Any single required constraint with zero matching rows means no
+		// post can ever satisfy the AND - short-circuit to empty.
+		if (requiredConstraints.some((c) => c.totalCount === 0)) return { topLvlIdObjs, truncated };
+
+		let result: Awaited<ReturnType<typeof paginateByTagRows>>;
+		if (hasRequiredTags) {
+			let driving = requiredConstraints.reduce((min, c) =>
+				c.totalCount < min.totalCount ? c : min,
+			);
+			let otherRequired = requiredConstraints.filter((c) => c !== driving);
+			result = await paginateByTagRows({
+				db,
+				drivingRows: driving.rows,
+				bound: driving.totalCount,
+				newFirst: section.newFirst,
+				msGte: section.msGte,
+				msLte: section.msLte,
+				excludeIdObjs: section.postIdObjsExclude,
+				needed,
+				flatView: section.flatView,
+				otherRequiredConstraints: otherRequired,
+				eitherConstraints: hasEitherTags ? eitherConstraints : undefined,
+				eitherByMss: section.eitherByMss,
+				eitherAtByMss: section.eitherAtByMss,
+				requiredCoreIncludes: section.requiredCoreIncludes,
+				eitherCoreIncludes: section.eitherCoreIncludes,
+			});
+		} else {
+			// Either-only: union of all either-constraint rows drives the
+			// pool. Bound is a safe upper bound (sum of counts, possibly
+			// double-counting a row that matches multiple constraint texts
+			// simultaneously) rather than a tight exact count - see caveats.
+			let dedupedRows = new Map<string, TagRow>();
+			for (let c of eitherConstraints)
+				for (let r of c.rows)
+					dedupedRows.set(getIdStr({ in_ms: r.p1!, ms: r.p2!, by_ms: r.p3! }), r);
+			let bound = eitherConstraints.reduce((sum, c) => sum + c.totalCount, 0);
+			result = await paginateByTagRows({
+				db,
+				drivingRows: [...dedupedRows.values()],
+				bound,
+				newFirst: section.newFirst,
+				msGte: section.msGte,
+				msLte: section.msLte,
+				excludeIdObjs: section.postIdObjsExclude,
+				needed,
+				flatView: section.flatView,
+				otherRequiredConstraints: [],
+				eitherByMss: section.eitherByMss,
+				eitherAtByMss: section.eitherAtByMss,
+				requiredCoreIncludes: section.requiredCoreIncludes,
+				eitherCoreIncludes: section.eitherCoreIncludes,
+			});
+		}
+		topLvlIdObjs.push(...result.confirmedTopLvlIdObjs);
+		truncated = result.truncated;
+	} else {
+		let result = await paginateWithoutTags({
+			db,
+			allowedSpaceMss,
+			newFirst: section.newFirst,
+			msGte: section.msGte,
+			msLte: section.msLte,
+			excludeIdObjs: section.postIdObjsExclude,
+			needed,
+			flatView: section.flatView,
+			eitherByMss: section.eitherByMss,
+			eitherAtByMss: section.eitherAtByMss,
+			requiredCoreIncludes: section.requiredCoreIncludes,
+			eitherCoreIncludes: section.eitherCoreIncludes,
+		});
+		topLvlIdObjs.push(...result.confirmedTopLvlIdObjs);
+		truncated = result.truncated;
+	}
+
+	return { topLvlIdObjs, truncated };
+};
+
+// =============================================================================
+// Main entry point
+// =============================================================================
+
+export let _getPostFeed = async (
+	db: Database,
+	rawInput: {
+		callerMs: number;
+		sections: PostFeedSection[];
+		setLastViewMsInMs?: number;
+	},
+	ownerCalled: boolean,
+	dbIsLocal: boolean,
+): Promise<GetPostFeedOutput> => {
+	let input = GetPostFeedInputSchema.parse(rawInput);
+	let { callerMs, sections } = input;
+
+	let allSectionInMss = [
+		...new Set(
+			sections.flatMap((s) => [...s.eitherInMss, ...s.postIdObjsInclude.map((o) => o.in_ms)]),
+		),
+	];
+
+	let { i_accountMs_permCode_mbRows, imb_spaceIsPublicRows } = await (async () => {
+		if (!allSectionInMss.length)
+			return { i_accountMs_permCode_mbRows: [], imb_spaceIsPublicRows: [] };
+		let rows = await runChunked(allSectionInMss, (spaceChunk) =>
+			db
+				.select()
+				.from(pTable)
+				.where(
+					or(
+						and(pf.code.eq(pc.i_accountMs_permCode_mb), pf.p1.in(spaceChunk), pf.p2.eq(callerMs)),
+						and(pf.code.eq(pc.imb_spaceIsPublic), pf.p1.in(spaceChunk), pf.p4.eq(1)),
+					),
+				),
+		);
+		let { [pc.i_accountMs_permCode_mb]: a = [], [pc.imb_spaceIsPublic]: b = [] } =
+			channelPartsByCode(rows);
+		return { i_accountMs_permCode_mbRows: a, imb_spaceIsPublicRows: b };
+	})();
+
+	let viewableSpaceMssSet = new Set(
+		[...i_accountMs_permCode_mbRows, ...imb_spaceIsPublicRows].map((r) => r.p1!),
+	);
+	if (dbIsLocal) viewableSpaceMssSet.add(0);
+	if (callerMs > 0) viewableSpaceMssSet.add(callerMs);
+	viewableSpaceMssSet.add(1);
+
+	if (!ownerCalled && !viewableSpaceMssSet.size) return {};
+
+	let topLvlPostIdStrsSections: string[][] = [];
+	let allPostIdObjsSet = new Map<string, IdObj>();
+	let truncatedSectionIndexes: number[] = [];
+
+	for (let i = 0; i < sections.length; i++) {
+		let section = sections[i];
+		let allowedSpaceMss = ownerCalled
+			? section.eitherInMss.length
+				? section.eitherInMss
+				: [...viewableSpaceMssSet]
+			: (section.eitherInMss.length ? section.eitherInMss : [...viewableSpaceMssSet]).filter((ms) =>
+					viewableSpaceMssSet.has(ms),
+				);
+
+		if (!allowedSpaceMss.length && !ownerCalled) {
+			topLvlPostIdStrsSections.push([]);
+			continue;
+		}
+
+		let { topLvlIdObjs, truncated } = await resolveSection(db, section, allowedSpaceMss);
+		if (truncated) truncatedSectionIndexes.push(i);
+
+		let sectionIdStrs: string[] = [];
+		for (let o of topLvlIdObjs) {
+			let idStr = getIdStr(o);
+			sectionIdStrs.push(idStr);
+			allPostIdObjsSet.set(idStr, o);
+
+			if (!section.flatView) {
+				// Nested view: pull every descendant of this root too. Bounded
+				// by topLvlPostLimit (max 15), so no chunking needed here.
+				let descendants = await db
+					.select()
+					.from(pTable)
+					.where(
+						and(
+							pf.code.eq(pc.postImb_parentMb_rootMb_childCount),
+							pf.p1.eq(o.in_ms),
+							pf.p6.eq(o.ms),
+							pf.p7.eq(o.by_ms),
+						),
+					);
+				for (let d of descendants) {
+					let dIdObj = { in_ms: d.p1!, ms: d.p2!, by_ms: d.p3! };
+					allPostIdObjsSet.set(getIdStr(dIdObj), dIdObj);
+				}
+			} else {
+				// Flat view: also surface the immediate parent as context.
+				let ancestry = (
+					await db
+						.select()
+						.from(pTable)
+						.where(
+							and(
+								pf.code.eq(pc.postImb_parentMb_rootMb_childCount),
+								pf.p1.eq(o.in_ms),
+								pf.p2.eq(o.ms),
+								pf.p3.eq(o.by_ms),
+							),
+						)
+				)[0];
+				if (ancestry?.p4 !== null && ancestry?.p4 !== undefined) {
+					let parentIdObj = { in_ms: ancestry.p1!, ms: ancestry.p4!, by_ms: ancestry.p5! };
+					allPostIdObjsSet.set(getIdStr(parentIdObj), parentIdObj);
+				}
+			}
+		}
+		topLvlPostIdStrsSections.push(sectionIdStrs);
+	}
+
+	let allPostIdObjs = [...allPostIdObjsSet.values()];
+	if (!allPostIdObjs.length) {
+		return {
+			topLvlPostIdStrsSections,
+			truncatedSectionIndexes: truncatedSectionIndexes.length ? truncatedSectionIndexes : undefined,
+		};
+	}
+
+	// --- Citation resolution -------------------------------------------------
+	let coreRowsInitial = await runChunked(allPostIdObjs, (c) =>
+		db
+			.select()
+			.from(pTable)
+			.where(
+				and(
+					pf.code.eq(pc._core_postImb_lastVersion_m),
+					tupleIn([pTable.p1, pTable.p2, pTable.p3], c),
+				),
+			),
+	);
+	let citedIdObjsToFetch = [
+		...new Set(
+			coreRowsInitial
+				.flatMap((r) => getCitedPostIds(r.txt ?? ''))
+				.filter((s) => !allPostIdObjsSet.has(s)),
+		),
+	]
+		.slice(0, 88)
+		.map((s) => getIdStrAsIdObj(s));
+
+	if (citedIdObjsToFetch.length) {
+		let viewabilityRows = await runChunked(
+			[...new Set(citedIdObjsToFetch.map((o) => o.in_ms))],
+			(spaceChunk) =>
+				db
+					.select()
+					.from(pTable)
+					.where(
+						or(
+							and(pf.code.eq(pc.i_accountMs_permCode_mb), pf.p1.in(spaceChunk), pf.p2.eq(callerMs)),
+							and(pf.code.eq(pc.imb_spaceIsPublic), pf.p1.in(spaceChunk), pf.p4.eq(1)),
+						),
+					),
+		);
+		let viewableForCitations = new Set(viewabilityRows.map((r) => r.p1!));
+		if (dbIsLocal) viewableForCitations.add(0);
+		if (callerMs > 0) viewableForCitations.add(callerMs);
+		viewableForCitations.add(1);
+
+		let viewableCitedIdObjs = ownerCalled
+			? citedIdObjsToFetch
+			: citedIdObjsToFetch.filter((o) => viewableForCitations.has(o.in_ms));
+		for (let o of viewableCitedIdObjs) allPostIdObjsSet.set(getIdStr(o), o);
+	}
+
+	allPostIdObjs = [...allPostIdObjsSet.values()];
+
+	// --- Full data assembly ---------------------------------------------------
+	let [ancestryRows, coreRows, tagJoinRows, reactionRows, reactionCountRows] = await Promise.all([
+		runChunked(allPostIdObjs, (c) =>
+			db
+				.select()
+				.from(pTable)
+				.where(
+					and(
+						pf.code.eq(pc.postImb_parentMb_rootMb_childCount),
+						tupleIn([pTable.p1, pTable.p2, pTable.p3], c),
+					),
+				),
+		),
+		runChunked(allPostIdObjs, (c) =>
+			db
+				.select()
+				.from(pTable)
+				.where(
+					and(
+						pf.code.eq(pc._core_postImb_lastVersion_m),
+						tupleIn([pTable.p1, pTable.p2, pTable.p3], c),
+					),
+				),
+		),
+		runChunked(allPostIdObjs, (c) =>
+			db
+				.select()
+				.from(pTable)
+				.where(
+					and(
+						pf.code.eq(pc.tagImb_postMb_lastVersion),
+						tupleIn([pTable.p1, pTable.p4, pTable.p5], c),
+					),
+				),
+		),
+		callerMs
+			? runChunked(allPostIdObjs, (c) =>
+					db
+						.select()
+						.from(pTable)
+						.where(
+							and(
+								pf.code.eq(pc._emoji_reactionImb_postMb),
+								pf.p3.eq(callerMs),
+								tupleIn([pTable.p1, pTable.p4, pTable.p5], c),
+							),
+						),
+				)
+			: Promise.resolve([]),
+		runChunked(allPostIdObjs, (c) =>
+			db
+				.select()
+				.from(pTable)
+				.where(
+					and(pf.code.eq(pc._emoji_postImb_count), tupleIn([pTable.p1, pTable.p2, pTable.p3], c)),
+				),
+		),
+	]);
+
+	// Resolve tag id -> text for every tag id referenced by the join rows
+	// (some may not already be in a fetched _tag_imBy8_count batch).
+	let tagIdentities = [
+		...new Map(
+			tagJoinRows.map((r) => [
+				getIdStr({ in_ms: r.p1!, ms: r.p2!, by_ms: r.p3! }),
+				{ in_ms: r.p1!, ms: r.p2!, by_ms: r.p3! },
+			]),
+		).values(),
+	];
+	let tagTextRows = await runChunked(tagIdentities, (c) =>
+		db
+			.select()
+			.from(pTable)
+			.where(and(pf.code.eq(pc._tag_imBy8_count), tupleIn([pTable.p1, pTable.p2, pTable.p3], c))),
+	);
+	let tagIdToTxt = new Map(
+		tagTextRows.map((r) => [getIdStr({ in_ms: r.p1!, ms: r.p2!, by_ms: r.p3! }), r.txt!]),
+	);
+
+	let idToPostMap: Record<string, FeedPost> = {};
+	let ancestryByKey = new Map(
+		ancestryRows.map((r) => [getIdStr({ in_ms: r.p1!, ms: r.p2!, by_ms: r.p3! }), r]),
+	);
+	for (let o of allPostIdObjs) {
+		let idStr = getIdStr(o);
+		let a = ancestryByKey.get(idStr);
+		idToPostMap[idStr] = {
+			...o,
+			childCount: a?.p8 ?? 0,
+			at_ms: a?.p4 ?? undefined,
+			at_by_ms: a?.p5 ?? undefined,
+			history: null,
+		};
+	}
+	for (let r of coreRows) {
+		let idStr = getIdStr({ in_ms: r.p1!, ms: r.p2!, by_ms: r.p3! });
+		if (!idToPostMap[idStr]) continue;
+		idToPostMap[idStr].history ??= {};
+		idToPostMap[idStr].history![r.p4!] = { ms: r.p5!, tags: [], core: r.txt ?? '' };
+	}
+	for (let r of tagJoinRows) {
+		let idStr = getIdStr({ in_ms: r.p1!, ms: r.p4!, by_ms: r.p5! });
+		let tagIdStr = getIdStr({ in_ms: r.p1!, ms: r.p2!, by_ms: r.p3! });
+		let layer = idToPostMap[idStr]?.history?.[r.p6!];
+		if (layer) layer.tags.push(tagIdToTxt.get(tagIdStr) ?? tagIdStr);
+	}
+	for (let post of Object.values(idToPostMap))
+		for (let layer of Object.values(post.history ?? {})) layer.tags.sort();
+	for (let r of reactionRows) {
+		let idStr = getIdStr({ in_ms: r.p1!, ms: r.p4!, by_ms: r.p5! });
+		if (idToPostMap[idStr]) (idToPostMap[idStr].myRxnEmojis ??= []).push(r.txt!);
+	}
+	for (let r of reactionCountRows) {
+		let idStr = getIdStr({ in_ms: r.p1!, ms: r.p2!, by_ms: r.p3! });
+		if (idToPostMap[idStr]) (idToPostMap[idStr].rxnEmojiCount ??= {})[r.txt!] = r.p4!;
+	}
+
+	// --- Enrichment: names + membership ---------------------------------------
+	let allByMss = [...new Set(Object.values(idToPostMap).map((p) => p.by_ms))];
+	let allInMss = [...new Set(Object.values(idToPostMap).map((p) => p.in_ms))];
+
+	let [accountNameRows, spaceNameRows, roleRows, flairRows] = await Promise.all([
+		runChunked(allByMss, (c) =>
+			db
+				.select()
+				.from(pTable)
+				.where(and(pf.code.eq(pc._accountName_bm), pf.p1.in(c))),
+		),
+		runChunked(allInMss, (c) =>
+			db
+				.select()
+				.from(pTable)
+				.where(and(pf.code.eq(pc._spaceName_imb), pf.p1.in(c))),
+		),
+		runChunked(allInMss, (c) =>
+			db
+				.select()
+				.from(pTable)
+				.where(
+					and(
+						pf.code.eq(pc.i_accountMs_roleCode_mb),
+						pf.p1.in(c),
+						pf.p2.in(allByMss.length ? allByMss : [-1]),
+					),
+				),
+		),
+		runChunked(allInMss, (c) =>
+			db
+				.select()
+				.from(pTable)
+				.where(
+					and(
+						pf.code.eq(pc._flair_i_accountMs_mb),
+						pf.p1.in(c),
+						pf.p2.in(allByMss.length ? allByMss : [-1]),
+						pf.txt.notEq(''),
+					),
+				),
+		),
+	]);
+
+	let msToAccountNameTxtMap: Record<string, string> = {};
+	for (let r of accountNameRows) msToAccountNameTxtMap[r.p1!] = r.txt!;
+	let msToSpaceNameTxtMap: Record<string, string> = {};
+	for (let r of spaceNameRows) msToSpaceNameTxtMap[r.p1!] = r.txt!;
+
+	let spaceMsToAccountMsToMembershipMap: Record<
+		string,
+		Record<string, z.infer<typeof MembershipSummarySchema>>
+	> = {};
+	for (let r of roleRows) {
+		((spaceMsToAccountMsToMembershipMap[r.p1!] ??= {})[r.p2!] ??= {}).roleCode = { num: r.p3! };
+	}
+	for (let r of flairRows) {
+		((spaceMsToAccountMsToMembershipMap[r.p1!] ??= {})[r.p2!] ??= {}).flair = { txt: r.txt! };
+	}
+
+	// --- Mark last-viewed ------------------------------------------------------
+	if (
+		input.setLastViewMsInMs &&
+		viewableSpaceMssSet.has(input.setLastViewMsInMs) &&
+		!dbIsLocal &&
+		callerMs
+	) {
+		await db
+			.update(pTable)
+			.set({ p3: accentCodes.none, p4: Date.now() })
+			.where(
+				and(
+					pf.code.eq(pc.i_accountMs_accentCode_lastViewMs_sidePriority),
+					pf.p1.eq(input.setLastViewMsInMs),
+					pf.p2.eq(callerMs),
+				),
+			);
+	}
+
+	return GetPostFeedOutputSchema.parse({
+		topLvlPostIdStrsSections,
+		idToPostMap,
+		msToAccountNameTxtMap,
+		msToSpaceNameTxtMap,
+		spaceMsToAccountMsToMembershipMap,
+		truncatedSectionIndexes: truncatedSectionIndexes.length ? truncatedSectionIndexes : undefined,
+	});
+};
+
+export let getPostFeed = async (
+	sections: PostFeedSection[],
+	useLocalDb: boolean,
+	setLastViewMsInMs?: number,
+) => {
+	let input = {
+		...(await getWhoObj()),
+		sections,
+		setLastViewMsInMs,
+	};
+	return useLocalDb
+		? _getPostFeed(await gsdb(), input, true, true)
+		: trpc().getPostFeed.mutate(input);
+};

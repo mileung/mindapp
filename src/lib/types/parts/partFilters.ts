@@ -1,4 +1,19 @@
-import { asc, desc, eq, gt, gte, isNotNull, isNull, like, lt, lte, not, sql } from 'drizzle-orm';
+import {
+	asc,
+	desc,
+	eq,
+	gt,
+	gte,
+	inArray,
+	isNotNull,
+	isNull,
+	like,
+	lt,
+	lte,
+	not,
+	notInArray,
+	sql,
+} from 'drizzle-orm';
 import type { SQLiteColumn } from 'drizzle-orm/sqlite-core';
 import { pTable } from './partsTable';
 
@@ -18,6 +33,8 @@ let makeIntegerFilterObj = (col: SQLiteColumn) => ({
 	lte0: lte(col, 0),
 	isNull: isNull(pTable.txt),
 	isNotNull: isNotNull(pTable.txt),
+	in: (values: number[]) => inArray(col, values),
+	notIn: (values: number[]) => notInArray(col, values),
 });
 
 export let pf = {
@@ -38,5 +55,6 @@ export let pf = {
 		like: (v: string) => like(pTable.txt, v),
 		notLike: (v: string) => not(like(pTable.txt, v)),
 		likeEscaped: (v: string) => sql`${pTable.txt} LIKE ${v} ESCAPE '\\'`,
+		in: (values: string[]) => inArray(pTable.txt, values),
 	},
 } as const;

@@ -54,21 +54,21 @@ export let maxTopLvlPostLimitPerSection = 15;
 
 export let ParsedQSchema = z.strictObject({
 	postIdObjsInclude: z.array(IdObjSchema).max(88),
-	eitherInMss: z.array(z.number()),
-	eitherByMss: z.array(z.number()),
-	eitherAtByMss: z.array(z.number()),
+	eitherInMss: z.array(z.number()).max(200),
+	eitherByMss: z.array(z.number()).max(200),
+	eitherAtByMss: z.array(z.number()).max(200),
 
-	requiredTags: z.array(z.string()),
-	eitherTags: z.array(z.string()),
+	requiredTags: z.array(z.string()).max(40),
+	eitherTags: z.array(z.string()).max(40),
 
-	requiredTagStarts: z.array(z.string()),
-	eitherTagStarts: z.array(z.string()),
+	requiredTagStarts: z.array(z.string()).max(40),
+	eitherTagStarts: z.array(z.string()).max(40),
 
-	requiredTagEnds: z.array(z.string()),
-	eitherTagEnds: z.array(z.string()),
+	requiredTagEnds: z.array(z.string()).max(40),
+	eitherTagEnds: z.array(z.string()).max(40),
 
-	requiredCoreIncludes: z.array(z.string()),
-	eitherCoreIncludes: z.array(z.string()),
+	requiredCoreIncludes: z.array(z.string()).max(40),
+	eitherCoreIncludes: z.array(z.string()).max(40),
 });
 
 export type ParsedQ = z.infer<typeof ParsedQSchema>;
