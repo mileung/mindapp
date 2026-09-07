@@ -1,4 +1,3 @@
-/*
 import { getWhoObj, gsdb } from '$lib/global-state.svelte';
 import { throwIf } from '$lib/js';
 import { trpc } from '$lib/trpc/client';
@@ -1081,10 +1080,10 @@ let escapeLikePattern = (input: string) =>
 // and if there are not enough posts with [Documentary] in that first iteration
 // to cause a paginated, all the potential [Documentary] post after that first
 // iteration are not iterated over
-*/
 
-// Below is AI code. Idk how it works.
+// Below is AI code. Idk how it works. It queries right, except it gets "for you" stuff when it shouldn't on an unfiltered feed and it's 4-5x slower...
 
+/*
 import { getWhoObj, gsdb } from '$lib/global-state.svelte';
 import { trpc } from '$lib/trpc/client';
 import { and, or, sql } from 'drizzle-orm';
@@ -2166,3 +2165,4 @@ export let getPostFeed = async (
 		? _getPostFeed(await gsdb(), input, true, true)
 		: trpc().getPostFeed.mutate(input);
 };
+*/
