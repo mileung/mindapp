@@ -57,6 +57,7 @@ export let ParsedQSchema = z.strictObject({
 	eitherInMss: z.array(z.number()).max(200),
 	eitherByMss: z.array(z.number()).max(200),
 	eitherAtByMss: z.array(z.number()).max(200),
+	excludeByMss: z.array(z.number()).max(200),
 
 	requiredTags: z.array(z.string()).max(40),
 	eitherTags: z.array(z.string()).max(40),
@@ -77,6 +78,7 @@ export let getDefaultParsedQ = (): ParsedQ => ({
 	postIdObjsInclude: [],
 	eitherByMss: [],
 	eitherAtByMss: [],
+	excludeByMss: [],
 	eitherInMss: [],
 	requiredTags: [],
 	eitherTags: [],

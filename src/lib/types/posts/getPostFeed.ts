@@ -1,3 +1,4 @@
+/*
 import { getWhoObj, gsdb } from '$lib/global-state.svelte';
 import { throwIf } from '$lib/js';
 import { trpc } from '$lib/trpc/client';
@@ -1080,10 +1081,10 @@ let escapeLikePattern = (input: string) =>
 // and if there are not enough posts with [Documentary] in that first iteration
 // to cause a paginated, all the potential [Documentary] post after that first
 // iteration are not iterated over
+*/
 
-// Below is AI code. Idk how it works. It queries right, except it gets "for you" stuff when it shouldn't on an unfiltered feed and it's 4-5x slower...
+// Below is AI code. Idk how it works. It queries right, except it gets "for you" stuff when it shouldn't on an unfiltered feed and it's 4-5x slower in prod. In dev it seems fine.
 
-/*
 import { getWhoObj, gsdb } from '$lib/global-state.svelte';
 import { trpc } from '$lib/trpc/client';
 import { and, or, sql } from 'drizzle-orm';
@@ -1296,6 +1297,7 @@ let paginateByTagRows = async (p: {
 	eitherConstraints?: TagConstraint[];
 	eitherByMss: number[];
 	eitherAtByMss: number[];
+	excludeByMss: number[];
 	requiredCoreIncludes: string[];
 	eitherCoreIncludes: string[];
 }): Promise<
@@ -1364,6 +1366,10 @@ let paginateByTagRows = async (p: {
 		if (p.eitherByMss.length) {
 			let allowed = new Set(p.eitherByMss);
 			candidates = candidates.filter((o) => allowed.has(o.by_ms));
+		}
+		if (p.excludeByMss.length) {
+			let excluded = new Set(p.excludeByMss);
+			candidates = candidates.filter((o) => !excluded.has(o.by_ms));
 		}
 
 		// Any other required-tag constraints (AND) not already guaranteed by
@@ -1511,6 +1517,7 @@ let paginateWithoutTags = async (p: {
 	flatView: boolean;
 	eitherByMss: number[];
 	eitherAtByMss: number[];
+	excludeByMss: number[];
 	requiredCoreIncludes: string[];
 	eitherCoreIncludes: string[];
 }): Promise<
@@ -1527,6 +1534,7 @@ let paginateWithoutTags = async (p: {
 			msGte === undefined ? undefined : msCol.gte(msGte),
 			msLte === undefined ? undefined : msCol.lte(msLte),
 			p.eitherByMss.length ? pf.p3.in(p.eitherByMss) : undefined,
+			p.excludeByMss.length ? pf.p3.notIn(p.excludeByMss) : undefined,
 			excludeIdObjs.length
 				? tupleNotIn([pTable.p1, pTable.p2, pTable.p3], excludeIdObjs)
 				: undefined,
@@ -1713,6 +1721,7 @@ let resolveSection = async (
 				eitherConstraints: hasEitherTags ? eitherConstraints : undefined,
 				eitherByMss: section.eitherByMss,
 				eitherAtByMss: section.eitherAtByMss,
+				excludeByMss: section.excludeByMss,
 				requiredCoreIncludes: section.requiredCoreIncludes,
 				eitherCoreIncludes: section.eitherCoreIncludes,
 			});
@@ -1739,6 +1748,7 @@ let resolveSection = async (
 				otherRequiredConstraints: [],
 				eitherByMss: section.eitherByMss,
 				eitherAtByMss: section.eitherAtByMss,
+				excludeByMss: section.excludeByMss,
 				requiredCoreIncludes: section.requiredCoreIncludes,
 				eitherCoreIncludes: section.eitherCoreIncludes,
 			});
@@ -1757,6 +1767,7 @@ let resolveSection = async (
 			flatView: section.flatView,
 			eitherByMss: section.eitherByMss,
 			eitherAtByMss: section.eitherAtByMss,
+			excludeByMss: section.excludeByMss,
 			requiredCoreIncludes: section.requiredCoreIncludes,
 			eitherCoreIncludes: section.eitherCoreIncludes,
 		});
@@ -2165,4 +2176,3 @@ export let getPostFeed = async (
 		? _getPostFeed(await gsdb(), input, true, true)
 		: trpc().getPostFeed.mutate(input);
 };
-*/

@@ -206,6 +206,7 @@
 								...getDefaultSection(),
 								eitherInMss: [urlInMs],
 								eitherAtByMss: [callerMs],
+								excludeByMss: [callerMs], // TODO: search query support for this
 								// eitherTags: ['__' + callerMs], // TODO: merge posts with account tag and eitherAtByMss
 								// This may require a rewrite to the parser (using an AST, parentheses, and pipes "|") due
 								// to the ambiguity of `@__8 [__8]`
