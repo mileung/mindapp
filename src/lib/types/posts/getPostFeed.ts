@@ -389,8 +389,8 @@ export let _getPostFeed = async (
 									),
 								),
 							)
-							.orderBy(newFirst ? pf.p4.desc : pf.p4.asc)
-							.limit(_tag_imBy8_countRequiredRows.length * section.topLvlPostLimit);
+							.orderBy(newFirst ? pf.p4.desc : pf.p4.asc);
+						// .limit(_tag_imBy8_countRequiredRows.length * section.topLvlPostLimit);
 						let postIdStrToRequiredTagsMap: Record<string, string[]> = {};
 						for (let i = 0; i < tagImb_postMb_lastVersionRequiredRows.length; i++) {
 							let { p1, p2, p3, p4, p5 } = tagImb_postMb_lastVersionRequiredRows[i];
@@ -480,8 +480,8 @@ export let _getPostFeed = async (
 											),
 								),
 							)
-							.orderBy(newFirst ? pf.p4.desc : pf.p4.asc)
-							.limit(_tag_imBy8_countEitherRows.length * section.topLvlPostLimit);
+							.orderBy(newFirst ? pf.p4.desc : pf.p4.asc);
+						// .limit(_tag_imBy8_countEitherRows.length * section.topLvlPostLimit);
 						let postIdStrToHasEitherTagsSet = new Set<string>();
 						for (let i = 0; i < tagImb_postMb_lastVersionRowsForThisLoop.length; i++) {
 							let { p1, p4, p5 } = tagImb_postMb_lastVersionRowsForThisLoop[i];
