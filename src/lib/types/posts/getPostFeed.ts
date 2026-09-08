@@ -321,6 +321,7 @@ export let _getPostFeed = async (
 			let possibleResultingPostIdObjsForSection: IdObj[] = [];
 			let notResultingPostIdObjsForSection: IdObj[] = [];
 			let getPostIdObjsNotToFetchMoreStuffFor = () => [
+				// TODO: This may hit the sqlite  expression tree max-depth. Chunk when it is clearly a problem?
 				...notResultingPostIdObjsForSection,
 				...resultingPostIdObjsForSection,
 				...section.postIdObjsExclude,
@@ -439,49 +440,77 @@ export let _getPostFeed = async (
 						_tag_imBy8_countEitherRows.length &&
 						(!sectionHasRequiredTags || postIdObjsWithAllRequiredTags.length)
 					) {
-						tagImb_postMb_lastVersionRowsForThisLoop = await db
-							.select()
-							.from(pTable)
-							.where(
-								and(
-									pf.code.eq(pc.tagImb_postMb_lastVersion),
-									...tagImb_postMb_lastVersionGetFilters(),
-									...getPostIdObjsNotToFetchMoreStuffFor().map((o) =>
-										not(
+						let tagImb_postMb_lastVersionCommonFilters = [
+							pf.code.eq(pc.tagImb_postMb_lastVersion),
+							...tagImb_postMb_lastVersionGetFilters(),
+							...getPostIdObjsNotToFetchMoreStuffFor().map((o) =>
+								not(
+									and(
+										pf.p1.eq(o.in_ms),
+										pf.p4.eq(o.ms), //
+										pf.p5.eq(o.by_ms),
+									)!,
+								),
+							),
+						];
+						if (sectionHasRequiredTags) {
+							let maxOrLeaves = 200;
+							let chunkSize = Math.max(
+								1,
+								Math.floor(maxOrLeaves / _tag_imBy8_countEitherRows.length),
+							);
+							let postIdObjChunks: (typeof postIdObjsWithAllRequiredTags)[] = [];
+							for (let i = 0; i < postIdObjsWithAllRequiredTags.length; i += chunkSize) {
+								postIdObjChunks.push(postIdObjsWithAllRequiredTags.slice(i, i + chunkSize));
+							}
+							let chunkedRows = await Promise.all(
+								postIdObjChunks.map((postIdObjChunk) =>
+									db
+										.select()
+										.from(pTable)
+										.where(
 											and(
-												pf.p1.eq(o.in_ms),
-												pf.p4.eq(o.ms), //
-												pf.p5.eq(o.by_ms),
-											)!,
-										),
-									),
-									sectionHasRequiredTags
-										? or(
-												..._tag_imBy8_countEitherRows.flatMap((_tag_imBy8_countEitherRow) =>
-													postIdObjsWithAllRequiredTags.map((postIdObj) =>
-														and(
-															pf.p1.eq(_tag_imBy8_countEitherRow.p1!),
-															pf.p2.eq(_tag_imBy8_countEitherRow.p2!),
-															pf.p3.eq(_tag_imBy8_countEitherRow.p3!),
-															pf.p4.eq(postIdObj.ms),
-															pf.p5.eq(postIdObj.by_ms),
+												...tagImb_postMb_lastVersionCommonFilters,
+												or(
+													..._tag_imBy8_countEitherRows.flatMap((_tag_imBy8_countEitherRow) =>
+														postIdObjChunk.map((postIdObj) =>
+															and(
+																pf.p1.eq(_tag_imBy8_countEitherRow.p1!),
+																pf.p2.eq(_tag_imBy8_countEitherRow.p2!),
+																pf.p3.eq(_tag_imBy8_countEitherRow.p3!),
+																pf.p4.eq(postIdObj.ms),
+																pf.p5.eq(postIdObj.by_ms),
+															),
 														),
 													),
 												),
-											)
-										: or(
-												..._tag_imBy8_countEitherRows.map((_tag_imBy8_countEitherRow) =>
-													and(
-														pf.p1.eq(_tag_imBy8_countEitherRow.p1!),
-														pf.p2.eq(_tag_imBy8_countEitherRow.p2!),
-														pf.p3.eq(_tag_imBy8_countEitherRow.p3!),
-													),
+											),
+										)
+										.orderBy(newFirst ? pf.p4.desc : pf.p4.asc),
+								),
+							);
+							tagImb_postMb_lastVersionRowsForThisLoop = chunkedRows.flat();
+						} else {
+							tagImb_postMb_lastVersionRowsForThisLoop = await db
+								.select()
+								.from(pTable)
+								.where(
+									and(
+										...tagImb_postMb_lastVersionCommonFilters,
+										or(
+											..._tag_imBy8_countEitherRows.map((_tag_imBy8_countEitherRow) =>
+												and(
+													pf.p1.eq(_tag_imBy8_countEitherRow.p1!),
+													pf.p2.eq(_tag_imBy8_countEitherRow.p2!),
+													pf.p3.eq(_tag_imBy8_countEitherRow.p3!),
 												),
 											),
-								),
-							)
-							.orderBy(newFirst ? pf.p4.desc : pf.p4.asc);
-						// .limit(_tag_imBy8_countEitherRows.length * section.topLvlPostLimit);
+										),
+									),
+								)
+								.orderBy(newFirst ? pf.p4.desc : pf.p4.asc)
+								.limit(section.topLvlPostLimit);
+						}
 						let postIdStrToHasEitherTagsSet = new Set<string>();
 						for (let i = 0; i < tagImb_postMb_lastVersionRowsForThisLoop.length; i++) {
 							let { p1, p4, p5 } = tagImb_postMb_lastVersionRowsForThisLoop[i];
