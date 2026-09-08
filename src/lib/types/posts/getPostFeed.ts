@@ -454,7 +454,7 @@ export let _getPostFeed = async (
 							),
 						];
 						if (sectionHasRequiredTags) {
-							let maxOrLeaves = 100;
+							let maxOrLeaves = 80;
 							let chunkSize = Math.max(
 								1,
 								Math.floor(maxOrLeaves / _tag_imBy8_countEitherRows.length),
