@@ -232,6 +232,9 @@
 							if (e.key === 'Backspace') {
 								e.preventDefault();
 								undoTagRefs[i]?.click();
+							} else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+								e.preventDefault();
+								submit();
 							}
 						}}
 						onclick={(e) => {
