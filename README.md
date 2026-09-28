@@ -64,9 +64,9 @@ The `code` column corresponds to several different part codes whose names descri
 `in_ms`, `ms`, and `by_ms` are variable names to identify where something is, when it happened, and by who. They are all Unix timestamp in milliseconds. The timestamp when you create an account is your account id. The timestamp when you create a space is that space's id. Etc.
 
 For the full list of part codes and how the rows are indexed, see:
-`partCodes.ts`: https://github.com/mileung/mindapp/blob/main/src/lib/types/parts/partCodes.ts
-`partsTable.ts`: https://github.com/mileung/mindapp/blob/main/src/lib/types/parts/partsTable.ts
-`local-db.ts`: https://github.com/mileung/mindapp/blob/main/src/lib/local-db.ts
+- `partCodes.ts`: https://github.com/mileung/mindapp/blob/main/src/lib/types/parts/partCodes.ts
+- `partsTable.ts`: https://github.com/mileung/mindapp/blob/main/src/lib/types/parts/partsTable.ts
+- `local-db.ts`: https://github.com/mileung/mindapp/blob/main/src/lib/local-db.ts
 
 The Mindapp client runs a SQLite database with the same schema as the cloud db for saving posts offline.
 
