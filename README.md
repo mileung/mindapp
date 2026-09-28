@@ -56,10 +56,10 @@ p8 INTEGER
 
 The `code` column corresponds to several different part codes whose names describes how the p1-p8 columns are used. For example, part code `0` is `postImb_parentMb_rootMb_childCount`. That means
 
-- `postImb`: p1 = in_ms, p2 = ms, p3 = by_ms
-- `parentMb`: p4/p5 = parent post ms/by_ms
-- `rootMb`: p6/p7 = root post ms/by_ms
-- `childCount`: p8 = how many direct replies the post has
+- `postImb`: `p1` = in_ms, `p2` = ms, `p3` = by_ms
+- `parentMb`: `p4`/`p5` = parent post ms/by_ms
+- `rootMb`: `p6`/`p7` = root post ms/by_ms
+- `childCount`: `p8` = how many direct replies the post has
 
 `in_ms`, `ms`, and `by_ms` are variable names to identify where something is, when it happened, and by who. They are all Unix timestamp in milliseconds. The timestamp when you create an account is your account id. The timestamp when you create a space is that space's id. Etc.
 
