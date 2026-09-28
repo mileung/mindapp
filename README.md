@@ -32,12 +32,12 @@ At this point, you should have a fully functional Mindapp instance that only you
 
 Mindapp is a SvelteKit app that uses a libSQL database.
 
-SvelteKit: https://svelte.dev/docs/kit/introduction
-libSQL: https://docs.turso.tech/libsql
+- SvelteKit: https://svelte.dev/docs/kit/introduction
+- libSQL: https://docs.turso.tech/libsql
 
 It is hosted on Netlify (for the SvelteKit client/server logic) and Turso for the database
-Netlify: https://www.netlify.com/pricing/
-Turso: https://turso.tech/pricing
+- Netlify: https://www.netlify.com/pricing/
+- Turso: https://turso.tech/pricing
 
 The codebase uses a single generic table called "parts" to store every row.
 The parts table schema is:
