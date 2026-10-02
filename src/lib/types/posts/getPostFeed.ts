@@ -512,8 +512,8 @@ export let _getPostFeed = async (
 								eitherTagRowChunks.push(_tag_imBy8_countEitherRows.slice(i, i + maxOrLeaves));
 							}
 							let chunkedEitherOnlyRows = await Promise.all(
-								eitherTagRowChunks.map((eitherTagRowChunk) =>
-									db
+								eitherTagRowChunks.map((eitherTagRowChunk) => {
+									let q = db
 										.select()
 										.from(pTable)
 										.where(
@@ -530,14 +530,16 @@ export let _getPostFeed = async (
 												),
 											),
 										)
-										.orderBy(newFirst ? pf.p4.desc : pf.p4.asc)
-										.limit(section.topLvlPostLimit),
-								),
+										.orderBy(newFirst ? pf.p4.desc : pf.p4.asc);
+									return sectionHasCores ? q : q.limit(section.topLvlPostLimit);
+								}),
 							);
-							tagImb_postMb_lastVersionRowsForThisLoop = chunkedEitherOnlyRows
-								.flat()
-								.sort((a, b) => (newFirst ? b.p4! - a.p4! : a.p4! - b.p4!))
-								.slice(0, section.topLvlPostLimit);
+							tagImb_postMb_lastVersionRowsForThisLoop = chunkedEitherOnlyRows.flat();
+							if (!sectionHasCores) {
+								tagImb_postMb_lastVersionRowsForThisLoop = tagImb_postMb_lastVersionRowsForThisLoop
+									.sort((a, b) => (newFirst ? b.p4! - a.p4! : a.p4! - b.p4!))
+									.slice(0, section.topLvlPostLimit);
+							}
 						}
 						let postIdStrToHasEitherTagsSet = new Set<string>();
 						for (let i = 0; i < tagImb_postMb_lastVersionRowsForThisLoop.length; i++) {
@@ -550,49 +552,77 @@ export let _getPostFeed = async (
 						if (!tagImb_postMb_lastVersionRowsForThisLoop.length) lastLoopForSection = true;
 					} else lastLoopForSection = true;
 				}
+				if (sectionHasTags && sectionHasCores) lastLoopForSection = true;
 				if (
 					sectionHasCores &&
 					(postIdObjsWithRequiredTagsAndEitherTags.length || !sectionHasTags)
 				) {
-					let _core_postImb_lastVersion_mRows = await db
-						.select()
-						.from(pTable)
-						.where(
-							and(
-								pf.code.eq(pc._core_postImb_lastVersion_m),
-								...section.requiredCoreIncludes.map((coreIncludes) =>
-									pf.txt.likeEscaped(`%${escapeLikePattern(coreIncludes)}%`),
-								),
-								or(
-									...section.eitherCoreIncludes.map((coreIncludes) =>
-										pf.txt.likeEscaped(`%${escapeLikePattern(coreIncludes)}%`),
-									),
-								),
-								or(...sectionInMssToCheck.map((inMs) => pf.p1.eq(inMs))),
-								msGte === undefined ? undefined : pf.p2.gte(msGte),
-								msLte === undefined ? undefined : pf.p2.lte(msLte),
-								...getPostIdObjsNotToFetchMoreStuffFor().map((o) =>
-									not(
+					let coreCommonFilters = [
+						pf.code.eq(pc._core_postImb_lastVersion_m),
+						...section.requiredCoreIncludes.map((coreIncludes) =>
+							pf.txt.likeEscaped(`%${escapeLikePattern(coreIncludes)}%`),
+						),
+						or(
+							...section.eitherCoreIncludes.map((coreIncludes) =>
+								pf.txt.likeEscaped(`%${escapeLikePattern(coreIncludes)}%`),
+							),
+						),
+						or(...sectionInMssToCheck.map((inMs) => pf.p1.eq(inMs))),
+						msGte === undefined ? undefined : pf.p2.gte(msGte),
+						msLte === undefined ? undefined : pf.p2.lte(msLte),
+						...getPostIdObjsNotToFetchMoreStuffFor().map((o) =>
+							not(
+								and(
+									pf.p1.eq(o.in_ms),
+									pf.p2.eq(o.ms), //
+									pf.p3.eq(o.by_ms),
+								)!,
+							),
+						),
+					];
+
+					let _core_postImb_lastVersion_mRows: PartInsert[];
+					if (sectionHasTags) {
+						let candidateChunks: (typeof postIdObjsWithRequiredTagsAndEitherTags)[] = [];
+						for (let i = 0; i < postIdObjsWithRequiredTagsAndEitherTags.length; i += maxOrLeaves) {
+							candidateChunks.push(
+								postIdObjsWithRequiredTagsAndEitherTags.slice(i, i + maxOrLeaves),
+							);
+						}
+						let chunkedCoreRows = await Promise.all(
+							candidateChunks.map((chunk) =>
+								db
+									.select()
+									.from(pTable)
+									.where(
 										and(
-											pf.p1.eq(o.in_ms),
-											pf.p2.eq(o.ms), //
-											pf.p3.eq(o.by_ms),
-										)!,
-									),
-								),
-								or(
-									...postIdObjsWithRequiredTagsAndEitherTags.map((o) =>
-										and(
-											pf.p1.eq(o.in_ms),
-											pf.p2.eq(o.ms), //
-											pf.p3.eq(o.by_ms),
+											...coreCommonFilters,
+											or(
+												...chunk.map((o) =>
+													and(
+														pf.p1.eq(o.in_ms),
+														pf.p2.eq(o.ms), //
+														pf.p3.eq(o.by_ms),
+													),
+												),
+											),
 										),
 									),
-								),
 							),
-						)
-						.orderBy(newFirst ? pf.p2.desc : pf.p2.asc)
-						.limit(section.topLvlPostLimit);
+						);
+						_core_postImb_lastVersion_mRows = chunkedCoreRows
+							.flat()
+							.sort((a, b) => (newFirst ? b.p2! - a.p2! : a.p2! - b.p2!))
+							.slice(0, section.topLvlPostLimit);
+					} else {
+						_core_postImb_lastVersion_mRows = await db
+							.select()
+							.from(pTable)
+							.where(and(...coreCommonFilters))
+							.orderBy(newFirst ? pf.p2.desc : pf.p2.asc)
+							.limit(section.topLvlPostLimit);
+					}
+
 					if (_core_postImb_lastVersion_mRows.length) {
 						for (let i = 0; i < _core_postImb_lastVersion_mRows.length; i++) {
 							let { p1, p2, p3 } = _core_postImb_lastVersion_mRows[i];
@@ -602,7 +632,9 @@ export let _getPostFeed = async (
 								by_ms: p3!,
 							});
 						}
-					} else lastLoopForSection = true;
+					} else if (!sectionHasTags) {
+						lastLoopForSection = true;
+					}
 				} else {
 					possibleResultingPostIdObjsForSection.push(...postIdObjsWithRequiredTagsAndEitherTags);
 				}

@@ -249,7 +249,7 @@ export let scrape = (externalUrl: string, externalDomString: string) => {
 			wikipedia: () => {
 				if (pathnameSlugs[0] === 'wiki') {
 					headline = querySelector(`#firstHeading`)?.innerText ?? headline;
-					extensionSearchQ = `[wikipedia.org] ${pathnameSlugs[1]}`;
+					extensionSearchQ = `[wikipedia.org] wikipedia.org/wiki/${pathnameSlugs[1]}`;
 				}
 			},
 		},
