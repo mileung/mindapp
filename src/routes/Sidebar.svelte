@@ -126,7 +126,9 @@
 				let newSpaceMsIndex = lastSeenInMsIndex + (e.key === 'ArrowUp' ? -1 : 1);
 				if (newSpaceMsIndex < 0) newSpaceMsIndex = 0;
 				if (newSpaceMsIndex >= sidebarSpaceMss.length) newSpaceMsIndex = sidebarSpaceMss.length - 1;
-				goto(`/${sidebarSpaceMss[newSpaceMsIndex]}__`, { keepFocus: true });
+				let currentQ = page.url.searchParams.get('q');
+				let target = `/${sidebarSpaceMss[newSpaceMsIndex]}__${currentQ ? `?q=${encodeURIComponent(currentQ)}` : ''}`;
+				goto(target, { keepFocus: true });
 			}
 		};
 		let onDrag = (clientY: number) => {
@@ -410,7 +412,7 @@
 					>
 						<a
 							data-sveltekit-keepfocus
-							href={`/${spaceMs}__`}
+							href={`/${spaceMs}__${spaceMs === gs.lastSeenInMs ? '' : page.url.search}`}
 							class={`pl-2 relative flex-1 fx h-10 gap-2 overflow-hidden active:cursor-grabbing`}
 							onclick={(e) => disableClickAfterDrag && e.preventDefault()}
 						>

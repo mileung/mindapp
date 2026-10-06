@@ -1,12 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { gotoIfNeeded, textInputFocused } from '$lib/dom';
-	import {
-		getSavedTagsSet,
-		getSpacePermissions,
-		getSuggestedTags,
-		gs,
-	} from '$lib/global-state.svelte';
+	import { getSavedTagsSet, getSpacePermissions, getSuggestedTags } from '$lib/global-state.svelte';
 	import { getAlteredSearchParams, isTouchScreen } from '$lib/js';
 	import { m } from '$lib/paraglide/messages';
 	import { updateSavedTags } from '$lib/types/local-cache';
@@ -78,7 +73,8 @@
 	let hoveringTopDiv = $state(false);
 
 	$effect(() => {
-		if (urlInMs !== undefined && gs.lastSeenInMs !== urlInMs) searchVal = '';
+		// if (urlInMs !== undefined && gs.lastSeenInMs !== urlInMs) searchVal = '';
+		searchVal = page.url.searchParams.get('q') ?? '';
 	});
 </script>
 
