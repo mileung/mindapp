@@ -484,7 +484,7 @@
 				}
 			} else {
 				post = {
-					in_ms: urlInMs ?? atPostIdObj!.in_ms,
+					in_ms: atPostIdObj?.in_ms ?? urlInMs!,
 					ms: 0,
 					by_ms: gs.accounts[0].ms,
 					...(atPostIdObj
