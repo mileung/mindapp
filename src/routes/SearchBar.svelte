@@ -54,7 +54,7 @@
 			.replace(/\s\s+/g, ' ')
 			.trim()
 			.replace(new RegExp(tagFilter + '$'), '')
-			.trim()} [${tag}]`.trimStart();
+			.trim()} [${tag}]!`.trimStart();
 		setTimeout(() => searchIpt!.scrollTo({ left: Number.MAX_SAFE_INTEGER }), 0);
 	};
 
